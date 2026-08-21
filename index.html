@@ -123,19 +123,19 @@
   .hour-row{border-top:1px dotted #EBC9D8;}
   .hour-label{position:absolute; left:0; top:-9px; font-size:11px; color:var(--text-soft); background:var(--paper); padding:0 4px; font-weight:700;}
   .task-block{
-    position:absolute; left:56px; right:8px; border-radius:12px; padding:5px 10px; font-size:12px; color:#5b3a4e;
+    position:absolute; border-radius:12px; padding:3px 6px; font-size:11.5px; color:#5b3a4e;
     overflow:hidden; border:2px solid rgba(255,255,255,.8); box-shadow:2px 2px 0 rgba(0,0,0,.08);
-    cursor: grab; user-select: none;
+    cursor: grab; user-select: none; z-index:2; transition: left 0.2s, width 0.2s;
   }
   .task-block:active{ cursor: grabbing; opacity: 0.8; }
-  .task-block b{display:block;font-size:12.5px;}
-  .task-block .tb-time{font-size:10px;opacity:.85;}
+  .task-block b{display:block;font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .task-block .tb-time{font-size:9.5px;opacity:.85; display:block;}
   .type-fixed{background:repeating-linear-gradient(135deg, var(--lavender) 0 8px, #F1E7FF 8px 16px); border-color:var(--lavender-deep);}
   .type-flexible{background:var(--pink); border-color:var(--pink-dark);}
   .type-tomorrow{background:var(--yellow); border-color:var(--yellow-deep);}
   .task-block.is-active{outline:3px solid #FF3E82; outline-offset:1px; box-shadow:0 0 0 3px rgba(255,62,130,.25), 2px 2px 0 rgba(0,0,0,.08);}
-  .task-block.is-done{opacity:.55; text-decoration:line-through;}
-  .now-line{position:absolute; left:0; right:0; height:0; border-top:2px solid #FF3E82; pointer-events:none;}
+  .task-block.is-done{opacity:.65; background:#E2F3E7; border-color:#81C784;}
+  .now-line{position:absolute; left:0; right:0; height:0; border-top:2px solid #FF3E82; pointer-events:none; z-index:3;}
   .now-line::before{content:'いま♡'; position:absolute; left:-2px; top:-10px; background:#FF3E82; color:#fff; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px;}
 
   /* ---------- form fields ---------- */
@@ -167,7 +167,26 @@
   .btn.gray{background:#eee; color:#888; border-color:#ccc; box-shadow:2px 2px 0 #ccc;}
   .btn:disabled{opacity:.4; cursor:not-allowed;}
 
-  /* ---------- task card ---------- */
+  /* ---------- task table / cards ---------- */
+  .task-table{
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid var(--pink);
+    margin-bottom: 12px;
+  }
+  .task-table th, .task-table td{
+    padding: 8px 10px;
+    border-bottom: 1px dashed var(--pink);
+    font-size: 12px;
+    text-align: left;
+  }
+  .task-table th{ background: #FFF0F5; color: var(--pink-dark); font-weight:800; }
+  .task-table tr:last-child td{ border-bottom: none; }
+  .task-table .status-col{ text-align: center; width: 32px; font-size: 16px; }
+
   .task-card{background:#fff; border:2px solid var(--pink); border-radius:16px; padding:10px 12px; margin-bottom:10px; position:relative;}
   .task-card.active-card{border-color:#FF3E82; box-shadow:0 0 0 3px rgba(255,62,130,.18);}
   .task-top{display:flex; justify-content:space-between; align-items:flex-start; gap:6px;}
@@ -197,6 +216,7 @@
   .week-col-head.sun{color:#FF6F91;}
   .week-col-head.sat{color:#4FA8D8;}
   .wk-chip{font-size:10.5px; border-radius:8px; padding:3px 6px; margin-bottom:4px; border:1px solid rgba(0,0,0,.06); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .wk-stats{ font-size: 11px; text-align: center; color: var(--pink-dark); font-weight: bold; margin-bottom: 4px; }
 
   /* ---------- month view ---------- */
   .month-weekday-row{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; font-size:11px; font-weight:800; text-align:center; color:var(--text-soft);}
@@ -205,12 +225,13 @@
   .month-cell:hover{transform:translateY(-1px);}
   .month-cell.other-month{opacity:.35;}
   .month-cell.today{border-color:#FF3E82; box-shadow:0 0 0 2px rgba(255,62,130,.15);}
-  .month-date{font-size:11px; font-weight:800;}
+  .month-date{font-size:11px; font-weight:800; display:flex; justify-content:space-between; align-items:center;}
   .month-dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:4px;}
   .dot{width:7px;height:7px;border-radius:50%;}
   .dot.fixed{background:var(--lavender-deep);}
   .dot.flexible{background:var(--pink-dark);}
   .dot.flow{background:var(--yellow-deep);}
+  .month-heart-count{ font-size:10px; color:var(--pink-dark); font-weight:bold; }
 
   /* ---------- modal ---------- */
   .modal-bg{position:fixed; inset:0; background:rgba(107,76,110,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; overflow-y:auto;}
@@ -311,7 +332,7 @@
     <h2 id="taskModalTitle">✏️ タスクをついか</h2>
     <div class="field"><label>タスクめい</label><input type="text" id="tmName" placeholder="例）すうがくの宿題"></div>
     <div class="row2">
-      <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="5" step="5" value="30"></div>
+      <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="0" step="1" value="30"></div>
       <div class="field"><label>開始時刻（任意）</label><input type="time" id="tmStartTime"></div>
     </div>
     <div class="field">
@@ -346,7 +367,7 @@
     <h2 id="routineModalTitle">🔁 ルーティンをついか</h2>
     <div class="field"><label>タスクめい</label><input type="text" id="rmName" placeholder="例）朝のストレッチ"></div>
     <div class="row2">
-      <div class="field"><label>所要時間（分）</label><input type="number" id="rmDuration" min="5" step="5" value="15"></div>
+      <div class="field"><label>所要時間（分）</label><input type="number" id="rmDuration" min="0" step="1" value="15"></div>
       <div class="field"><label>開始時刻（任意）</label><input type="time" id="rmStartTime"></div>
     </div>
     <div class="field">
@@ -367,7 +388,7 @@
 
 <div id="toast"></div>
 
-<!-- Firebase SDK (v10 JS Modules) -->
+<!-- Firebase SDK (v10 JS Modules) - 混在エラーを修正 -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { 
@@ -381,17 +402,10 @@
     getFirestore, 
     doc, 
     setDoc, 
+    getDoc, 
     onSnapshot 
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-
-
-  import { initializeApp } from "firebase/app";
-  import { getFirestore } from "firebase/firestore";
-  import { getAuth } from "firebase/auth";
-
-
-  // ★ご自身のFirebaseプロジェクトの設定値をここに貼り付けてください
   const firebaseConfig = {
     apiKey: "AIzaSyD-rsAZ3ZpebNlpYoNKkpwWB7zbdsG4_Eo",
     authDomain: "test-b1f84.firebaseapp.com",
@@ -414,7 +428,9 @@
     signOut,
     doc,
     setDoc,
-    onSnapshot
+    getDoc,
+    onSnapshot,
+    onAuthStateChanged
   };
 </script>
 
@@ -426,6 +442,7 @@
   const LS_TASKS = 'sp_tasks_v2';
   const LS_ROUTINES = 'sp_routines_v1';
   const LS_SETTINGS = 'sp_settings_v2';
+  const LS_OWNER = 'sp_data_owner_uid_v1';
 
   function loadLocalTasks(){ try{ return JSON.parse(localStorage.getItem(LS_TASKS)) || []; }catch(e){ return []; } }
   function saveLocalTasks(){ localStorage.setItem(LS_TASKS, JSON.stringify(state.tasks)); }
@@ -450,53 +467,119 @@
     unsubscribeFirestore: null
   };
 
+  // Firestoreへの保存を直列化して、短時間に複数回変更しても古い内容で上書きしにくくする。
+  let saveQueue = Promise.resolve();
+  let firestoreReady = false;
+
+  function localHasData(){
+    return state.tasks.length > 0 || state.routines.length > 0;
+  }
+
   function syncData(){
-    if(state.currentUser && window.fbMethods){
-      const uid = state.currentUser.uid;
-      const ref = window.fbMethods.doc(window.fbDb, "users", uid);
-      window.fbMethods.setDoc(ref, {
-        tasks: state.tasks,
-        routines: state.routines,
-        settings: state.settings
-      }, { merge: true });
-    } else {
-      saveLocalTasks();
-      saveLocalRoutines();
-      saveLocalSettings();
+    // ローカルにも常にキャッシュしておく。
+    saveLocalTasks();
+    saveLocalRoutines();
+    saveLocalSettings();
+
+    if(!state.currentUser || !window.fbMethods || !firestoreReady){
+      return Promise.resolve();
     }
+
+    const uid = state.currentUser.uid;
+    const ref = window.fbMethods.doc(window.fbDb, 'users', uid);
+    const payload = JSON.parse(JSON.stringify({
+      tasks: state.tasks,
+      routines: state.routines,
+      settings: state.settings
+    }));
+
+    saveQueue = saveQueue.then(()=>
+      window.fbMethods.setDoc(ref, payload, { merge:true })
+    ).catch(e=>{
+      console.error('Firestore保存失敗:', e);
+      showToast('データ保存に失敗したよ💦');
+    });
+
+    return saveQueue;
   }
 
   /* ================= firebase auth init ================= */
   function initAuth(){
-    if(!window.fbAuth) { setTimeout(initAuth, 200); return; }
+    if(!window.fbAuth || !window.fbMethods || !window.fbMethods.onAuthStateChanged){
+      setTimeout(initAuth, 200);
+      return;
+    }
+
     window.fbMethods.onAuthStateChanged(window.fbAuth, (user)=>{
       state.currentUser = user;
+      firestoreReady = false;
+
       const statusEl = document.getElementById('userStatus');
       const authLogoutBtn = document.getElementById('authLogoutBtn');
+
+      if(state.unsubscribeFirestore){
+        state.unsubscribeFirestore();
+        state.unsubscribeFirestore = null;
+      }
+
       if(user){
-        statusEl.textContent = user.email;
+        statusEl.textContent = user.email || 'ログイン中';
         statusEl.style.display = 'inline-block';
         authLogoutBtn.style.display = 'inline-block';
-        
-        // リアルタイム同期開始
-        if(state.unsubscribeFirestore) state.unsubscribeFirestore();
-        const ref = window.fbMethods.doc(window.fbDb, "users", user.uid);
-        state.unsubscribeFirestore = window.fbMethods.onSnapshot(ref, (docSnap)=>{
+
+        const ref = window.fbMethods.doc(window.fbDb, 'users', user.uid);
+        let firstSnapshot = true;
+
+        state.unsubscribeFirestore = window.fbMethods.onSnapshot(ref, async (docSnap)=>{
           if(docSnap.exists()){
             const data = docSnap.data();
-            if(data.tasks) state.tasks = data.tasks;
-            if(data.routines) state.routines = data.routines;
-            if(data.settings) state.settings = data.settings;
+
+            // Firestoreを正としてstateへ反映する。ここでは絶対に保存し直さない。
+            state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            state.routines = Array.isArray(data.routines) ? data.routines : [];
+            state.settings = Object.assign(
+              {dayStart:'08:00', dayEnd:'22:00', webhook:''},
+              data.settings || {}
+            );
+
+            localStorage.setItem(LS_OWNER, user.uid);
+            firestoreReady = true;
             render();
+            firstSnapshot = false;
+            return;
           }
+
+          // 初回ログインでFirestore側にデータがない場合だけ、
+          // このブラウザにある未ログイン時のデータを移行する。
+          if(firstSnapshot){
+            firstSnapshot = false;
+            const owner = localStorage.getItem(LS_OWNER);
+            const canMigrate = !owner || owner === user.uid;
+
+            firestoreReady = true;
+
+            if(canMigrate && localHasData()){
+              localStorage.setItem(LS_OWNER, user.uid);
+              await syncData();
+              showToast('このアカウントにデータを同期したよ✨');
+            }else{
+              // 完全な新規アカウントなら空データを作る。
+              state.tasks = [];
+              state.routines = [];
+              state.settings = loadLocalSettings();
+              localStorage.setItem(LS_OWNER, user.uid);
+              await syncData();
+              render();
+            }
+          }
+        }, (error)=>{
+          console.error('Firestore同期エラー:', error);
+          firestoreReady = false;
+          showToast('クラウド同期に失敗したよ💦');
         });
-      } else {
+      }else{
         statusEl.style.display = 'none';
         authLogoutBtn.style.display = 'none';
-        if(state.unsubscribeFirestore){
-          state.unsubscribeFirestore();
-          state.unsubscribeFirestore = null;
-        }
         state.tasks = loadLocalTasks();
         state.routines = loadLocalRoutines();
         state.settings = loadLocalSettings();
@@ -536,16 +619,18 @@
   }
 
   /* ================= labels ================= */
-  function typeLabel(type){ return type==='fixed' ? '固定予定' : type==='flow' ? 'あfullたら翌日' : 'ずれてOK'; }
+  function typeLabel(type){ return type==='fixed' ? '固定予定' : type==='flow' ? 'あふれたら翌日' : 'ずれてOK'; }
   function typeBadgeClass(type){ return type==='fixed' ? 'fixed' : type==='flow' ? 'tomorrow' : 'flexible'; }
   function typeBlockClass(type){ return type==='fixed' ? 'type-fixed' : type==='flow' ? 'type-tomorrow' : 'type-flexible'; }
 
   /* ================= routines -> daily instances ================= */
   function ensureRoutineInstances(dateStr){
+    let changed = false;
     state.routines.forEach(r=>{
       if(!r.active) return;
       const exists = state.tasks.some(t=> t.routineId===r.id && t.assignedDate===dateStr);
       if(!exists){
+        changed = true;
         state.tasks.push({
           id: uid(), name: r.name, duration: r.duration, schedulingType: r.schedulingType,
           manualStart: r.manualStart || null, assignedDate: dateStr, deadline: null,
@@ -557,9 +642,10 @@
         });
       }
     });
+    return changed;
   }
 
-  /* ================= scheduling engine (per date) ================= */
+  /* ================= scheduling engine ================= */
   function recalcScheduleForDate(dateStr){
     const dayStart = timeStrToMin(state.settings.dayStart);
     const dayEnd = timeStrToMin(state.settings.dayEnd);
@@ -635,13 +721,11 @@
 
     state.tasks.forEach(t=>{
       if(t.assignedDate === today && t.status === 'planned' && t.scheduledStart != null){
-        // 開始時刻になった通知
         if(!t.notifiedStart && now >= t.scheduledStart){
           t.notifiedStart = true;
           updated = true;
           postToDiscord('⏰ [' + t.name + '] の開始時刻になりました！（' + minToTimeStr(t.scheduledStart) + '）');
         }
-        // 終了予定時刻になった通知
         if(!t.notifiedEnd && now >= t.scheduledEnd){
           t.notifiedEnd = true;
           updated = true;
@@ -663,7 +747,7 @@
     }
   }
 
-  /* ================= task card html (shared) ================= */
+  /* ================= task card html ================= */
   function taskCardHTML(t, opts){
     opts = opts || {};
     const isToday = t.assignedDate === todayStr();
@@ -674,9 +758,9 @@
     if(t.status==='done'){
       const plannedTxt = (t.plannedStart!=null) ? ('予定 '+minToTimeStr(t.plannedStart)+'〜'+minToTimeStr(t.plannedEnd)) : '';
       const actualMin = (t.actualStartTs && t.actualEndTs) ? Math.max(0, Math.round((t.actualEndTs - t.actualStartTs - t.totalPausedMs)/60000)) : t.duration;
-      timeInfo = plannedTxt + (plannedTxt?'<br>':'') + '実際 約' + actualMin + '分でかんりょう';
+      timeInfo = plannedTxt + (plannedTxt?'<br>':'') + '実際 約' + actualMin + '分でかんりょう 💖';
     } else if(t.scheduledStart != null){
-      timeInfo = '🕒 ' + minToTimeStr(t.scheduledStart) + '〜' + minToTimeStr(t.scheduledEnd);
+      timeInfo = '🕒 ' + minToTimeStr(t.scheduledStart) + '〜' + minToTimeStr(t.scheduledEnd) + (t.duration === 0 ? '（0分タスク）' : '');
     } else {
       timeInfo = t.assignedDate ? '（時間調整中…）' : 'ToDo（日付みてい）';
     }
@@ -708,6 +792,7 @@
     } else if(t.status==='planned'){
       const canStart = isToday && !anyBusyToday;
       actionsHtml = '<button class="btn small" data-action="start" data-id="'+t.id+'" '+(canStart?'':'disabled')+'>▶はじめる</button>';
+      actionsHtml += '<button class="btn small ghost" data-action="done" data-id="'+t.id+'">💖すぐ完了</button>';
       if(opts.showAssignBtn && !t.assignedDate){
         actionsHtml += '<button class="btn small blue" data-action="assignToday" data-id="'+t.id+'">📅今日にいれる</button>';
       }
@@ -722,7 +807,7 @@
 
     return '<div class="task-card '+(t.status==='active'?'active-card':'')+'">'
       + '<div class="task-top">'
-      + '<div class="task-name">'+(t.routineId?'🔁 ':'')+escapeHtml(t.name)+'</div>'
+      + '<div class="task-name">'+(t.status==='done'?'💖 ':'')+(t.routineId?'🔁 ':'')+escapeHtml(t.name)+'</div>'
       + '<span class="badge '+typeBadgeClass(t.schedulingType)+'">'+typeLabel(t.schedulingType)+'</span>'
       + '</div>'
       + '<div class="task-meta">'+timeInfo+'</div>'
@@ -730,7 +815,7 @@
       + '</div>';
   }
 
-  /* ================= timeline html builder ================= */
+  /* ================= 重なり自動レイアウト付き timeline html builder ================= */
   function buildTimelineHTML(dateStr, isToday){
     const dayStart = timeStrToMin(state.settings.dayStart);
     const dayEnd = timeStrToMin(state.settings.dayEnd);
@@ -741,21 +826,65 @@
     const endHour = Math.max(startHour+1, Math.ceil(maxEnd/60));
     const height = (endHour-startHour)*60*PX_PER_MIN;
 
+    // 重なり判定＆レイアウト計算
+    const items = scheduled.map(t=>{
+      // 0分タスク表示用に表示最小高さを確保（最小12分相当）
+      const effEnd = Math.max(t.scheduledEnd, t.scheduledStart + (t.duration === 0 ? 12 : Math.max(t.duration, 10)));
+      return { id: t.id, start: t.scheduledStart, end: effEnd, task: t, col: 0, totalCols: 1 };
+    }).sort((a,b)=> a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+    // カラム割り当て
+    const columns = [];
+    items.forEach(item => {
+      let placed = false;
+      for (let i = 0; i < columns.length; i++) {
+        if (columns[i] <= item.start) {
+          item.col = i;
+          columns[i] = item.end;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        item.col = columns.length;
+        columns.push(item.end);
+      }
+    });
+
+    // 重なるグループごとに幅・位置の総列数を同期
+    items.forEach(item => {
+      const overlapping = items.filter(other => item.start < other.end && item.end > other.start);
+      const maxCol = Math.max(...overlapping.map(o => o.col)) + 1;
+      item.totalCols = maxCol;
+    });
+
     let html = '<div class="timeline-inner" style="height:'+height+'px;" data-start-hour="'+startHour+'">';
     for(let h=startHour; h<endHour; h++){
       const top = (h-startHour)*60*PX_PER_MIN;
       const label = h>=24 ? (h-24)+':00(翌)' : h+':00';
       html += '<div class="hour-row" style="position:absolute;top:'+top+'px;left:0;right:0;height:'+(60*PX_PER_MIN)+'px;"><span class="hour-label">'+label+'</span></div>';
     }
-    scheduled.forEach(t=>{
-      const top = (t.scheduledStart-startHour*60)*PX_PER_MIN;
-      const h = Math.max(24, (t.scheduledEnd-t.scheduledStart)*PX_PER_MIN);
+
+    items.forEach(item => {
+      const t = item.task;
+      const top = (t.scheduledStart - startHour*60) * PX_PER_MIN;
+      const displayDuration = (t.duration === 0) ? 12 : Math.max(t.duration, 10);
+      const h = displayDuration * PX_PER_MIN;
       const stateClass = t.status==='active' ? 'is-active' : t.status==='done' ? 'is-done' : '';
-      const mark = t.status==='done' ? '✅ ' : t.status==='paused' ? '⏸ ' : '';
-      html += '<div class="task-block '+typeBlockClass(t.schedulingType)+' '+stateClass+'" draggable="true" data-id="'+t.id+'" style="top:'+top+'px;height:'+h+'px;">'
+      const mark = t.status==='done' ? '💖 ' : t.status==='paused' ? '⏸ ' : '';
+      
+      // 横幅と位置の動的計算（56pxオフセットから右側領域を分ける）
+      const leftOffset = 56;
+      const availableWidth = 100; // %ベース
+      const width = (availableWidth / item.totalCols);
+      const left = `calc(${leftOffset}px + ${item.col * width}% * (1 - ${leftOffset}px / 100%))`;
+      const widthCss = `calc(${width}% * (1 - ${leftOffset}px / 100%) - 4px)`;
+
+      html += '<div class="task-block '+typeBlockClass(t.schedulingType)+' '+stateClass+'" draggable="true" data-id="'+t.id+'" style="top:'+top+'px;height:'+h+'px;left:'+left+';width:'+widthCss+';">'
         + '<b>'+mark+escapeHtml(t.name)+'</b>'
-        + '<span class="tb-time">'+minToTimeStr(t.scheduledStart)+'〜'+minToTimeStr(t.scheduledEnd)+'</span></div>';
+        + '<span class="tb-time">'+minToTimeStr(t.scheduledStart)+(t.duration>0?'〜'+minToTimeStr(t.scheduledEnd):' (0分)')+'</span></div>';
     });
+
     if(isToday){
       const now = nowMin();
       if(now >= startHour*60 && now <= endHour*60){
@@ -776,8 +905,32 @@
 
     const timelineHtml = buildTimelineHTML(dateStr, isToday);
 
-    const notDone = state.tasks.filter(t=> t.assignedDate===dateStr && t.status!=='done');
-    const done = state.tasks.filter(t=> t.assignedDate===dateStr && t.status==='done');
+    const allDayTasks = state.tasks.filter(t=> t.assignedDate===dateStr);
+    const notDone = allDayTasks.filter(t=> t.status!=='done');
+    const done = allDayTasks.filter(t=> t.status==='done');
+    
+    // 達成状況テーブル（表）の構築
+    let tableRows = '';
+    if (allDayTasks.length > 0) {
+      tableRows = allDayTasks.map(t => {
+        const isDone = t.status === 'done';
+        const timeStr = t.scheduledStart != null ? minToTimeStr(t.scheduledStart) : '未定';
+        return '<tr>'
+          + '<td class="status-col">'+(isDone ? '💖' : '⚪')+'</td>'
+          + '<td><b>'+escapeHtml(t.name)+'</b></td>'
+          + '<td>'+timeStr+' ('+t.duration+'分)</td>'
+          + '<td>'+(isDone ? '<span style="color:#2e7d32;font-weight:bold;">達成！</span>' : '<span style="color:#888;">未</span>')+'</td>'
+          + '</tr>';
+      }).join('');
+    } else {
+      tableRows = '<tr><td colspan="4" class="empty">タスクはありません</td></tr>';
+    }
+
+    const tableHtml = '<table class="task-table">'
+      + '<thead><tr><th></th><th>タスク名</th><th>予定時間</th><th>状況</th></tr></thead>'
+      + '<tbody>' + tableRows + '</tbody>'
+      + '</table>';
+
     const queueTasks = notDone.concat(done).sort((a,b)=>{
       const rank = s => s==='active' ? 0 : s==='paused' ? 1 : s==='planned' ? 2 : 3;
       const r = rank(a.status)-rank(b.status);
@@ -811,7 +964,8 @@
       + '</div>'
       + '<div>'
       + '<div class="card"><div class="washi" style="background:repeating-linear-gradient(45deg, var(--lavender) 0 6px, #F3ECFF 6px 12px);"></div>'
-      + '<h2>📝 タスクリスト <button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'" style="margin-left:auto;">＋ついか</button></h2>'
+      + '<h2>📊 達成チェックリスト（表）</h2>' + tableHtml
+      + '<h2>📝 タスク詳細 <button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'" style="margin-left:auto;">＋ついか</button></h2>'
       + queueHtml + '</div>'
       + '</div>'
       + '</div>';
@@ -822,26 +976,38 @@
     const dates = [0,1,2,3,4,5,6].map(i=>addDays(start,i));
     dates.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
     const todayS = todayStr();
+    
+    let totalWeekTasks = 0;
+    let totalWeekDone = 0;
+
     const cols = dates.map(d=>{
       const dObj = strToDate(d);
       const wd = dObj.getDay();
       const isToday = d===todayS;
-      const dayTasks = state.tasks.filter(t=> t.assignedDate===d && t.scheduledStart!=null).sort((a,b)=>a.scheduledStart-b.scheduledStart);
-      const chips = dayTasks.map(t=>
+      const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
+      const doneCount = dayTasks.filter(t=> t.status==='done').length;
+      
+      totalWeekTasks += dayTasks.length;
+      totalWeekDone += doneCount;
+
+      const chips = dayTasks.sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0)).map(t=>
         '<div class="wk-chip '+typeBlockClass(t.schedulingType)+'" data-goto-date="'+d+'">'
-        + minToTimeStr(t.scheduledStart)+' '+(t.status==='done'?'✅':t.status==='active'?'▶':t.status==='paused'?'⏸':'')+escapeHtml(t.name)+'</div>').join('')
+        + (t.status==='done'?'💖 ':minToTimeStr(t.scheduledStart)+' ')+escapeHtml(t.name)+'</div>').join('')
         || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>';
+
       return '<div class="week-col '+(isToday?'today':'')+'">'
         + '<div class="week-col-head '+(wd===0?'sun':wd===6?'sat':'')+'" data-goto-date="'+d+'">'+(dObj.getMonth()+1)+'/'+dObj.getDate()+'('+WD[wd]+')</div>'
+        + '<div class="wk-stats">'+(dayTasks.length > 0 ? doneCount+'/'+dayTasks.length+' 💖' : '-')+'</div>'
         + chips + '</div>';
     }).join('');
+
     return '<div class="day-nav">'
       + '<button class="icon-btn nav-arrow" data-shift-days="-7">◀</button>'
       + '<div class="date-label">'+formatShort(start)+' 〜 '+formatShort(addDays(start,6))+'</div>'
       + '<button class="icon-btn nav-arrow" data-shift-days="7">▶</button>'
       + '<button class="btn small ghost" data-this-week="1">今週</button>'
       + '</div>'
-      + '<div class="card"><div class="washi"></div><h2>🗓 週の予定</h2><div class="week-grid">'+cols+'</div></div>';
+      + '<div class="card"><div class="washi"></div><h2>🗓 週の予定と達成状況（今週の達成度: '+totalWeekDone+' / '+totalWeekTasks+' 💖）</h2><div class="week-grid">'+cols+'</div></div>';
   }
 
   function renderMonthView(){
@@ -855,25 +1021,40 @@
     cells.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
     const monthIdx = base.getMonth();
     const todayS = todayStr();
+    
+    let totalMonthTasks = 0;
+    let totalMonthDone = 0;
+
     const weekdayRow = WD.map((w,i)=> '<div style="'+(i===0?'color:#FF6F91':i===6?'color:#4FA8D8':'')+'">'+w+'</div>').join('');
     const cellsHtml = cells.map(d=>{
       const dObj = strToDate(d);
       const other = dObj.getMonth()!==monthIdx;
       const isToday = d===todayS;
       const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
-      const dots = dayTasks.slice(0,6).map(t=>'<span class="dot '+t.schedulingType+'"></span>').join('');
+      const doneCount = dayTasks.filter(t=> t.status==='done').length;
+
+      if(!other){
+        totalMonthTasks += dayTasks.length;
+        totalMonthDone += doneCount;
+      }
+
+      const dots = dayTasks.slice(0,6).map(t=>'<span class="dot '+(t.status==='done'?'fixed':t.schedulingType)+'"></span>').join('');
       const hasDeadline = state.tasks.some(t=> t.deadline===d && t.status!=='done');
+      
       return '<div class="month-cell '+(other?'other-month':'')+' '+(isToday?'today':'')+'" data-goto-date="'+d+'">'
-        + '<div class="month-date">'+dObj.getDate()+(hasDeadline?' 🔖':'')+'</div>'
+        + '<div class="month-date"><span>'+dObj.getDate()+(hasDeadline?' 🔖':'')+'</span>'
+        + (dayTasks.length > 0 ? '<span class="month-heart-count">'+doneCount+'💖</span>' : '')
+        + '</div>'
         + '<div class="month-dots">'+dots+'</div></div>';
     }).join('');
+
     return '<div class="day-nav">'
       + '<button class="icon-btn nav-arrow" data-shift-months="-1">◀</button>'
       + '<div class="date-label">'+formatMonthJP(state.viewDate)+'</div>'
       + '<button class="icon-btn nav-arrow" data-shift-months="1">▶</button>'
       + '<button class="btn small ghost" data-this-month="1">今月</button>'
       + '</div>'
-      + '<div class="card"><div class="washi"></div><h2>🗓 月の予定</h2>'
+      + '<div class="card"><div class="washi"></div><h2>🗓 月の予定と達成状況（月達成度: '+totalMonthDone+' / '+totalMonthTasks+' 💖）</h2>'
       + '<div class="month-weekday-row">'+weekdayRow+'</div>'
       + '<div class="month-grid">'+cellsHtml+'</div></div>';
   }
@@ -888,11 +1069,11 @@
       return '<div class="todo-col"><h3>'+title+'</h3>'+list.map(t=>taskCardHTML(t,opts)).join('')+'</div>';
     }
     return '<div class="card"><div class="washi"></div>'
-      + '## ✅ ToDoリスト <button class="btn small" data-open-task-modal="1" data-default-date="" style="margin-left:auto;">＋ついか</button>'
+      + '<h2 style="font-family:\'Yomogi\',cursive; color:var(--pink-dark);">✅ ToDoリスト <button class="btn small" data-open-task-modal="1" data-default-date="" style="margin-left:auto;">＋ついか</button></h2>'
       + '<div class="todo-cols">'
       + col('🌤 予定してない', backlog, {showDate:false, showAssignBtn:true})
       + col('📌 予定に追加した', scheduled, {showDate:true, showUnassign:true})
-      + col('🎀 終わった', done, {showDate:true})
+      + col('💖 終わった', done, {showDate:true})
       + '</div></div>';
   }
 
@@ -917,7 +1098,6 @@
 
   /* ================= main render ================= */
   function render(){
-    // タイムラインのスクロール位置を保存
     const scrollContainer = document.getElementById('timelineScrollContainer');
     const scrollTop = scrollContainer ? scrollContainer.scrollTop : null;
 
@@ -929,14 +1109,24 @@
     else if(state.currentView==='todo') root.innerHTML = renderTodoView();
     else if(state.currentView==='routine') root.innerHTML = renderRoutineView();
 
-    // スクロール位置を復元
     if(scrollTop !== null && state.currentView==='day'){
       const newScrollContainer = document.getElementById('timelineScrollContainer');
       if(newScrollContainer) newScrollContainer.scrollTop = scrollTop;
     }
 
     setupDragAndDrop();
-    syncData();
+
+    // ルーティンから当日の実体タスクが生成された場合だけ保存する。
+    // 通常の再描画ではFirestoreへ書き込まない。
+    if(state.currentUser){
+      const taskCountAfter = state.tasks.length;
+      if(taskCountAfter !== render._lastTaskCount){
+        render._lastTaskCount = taskCountAfter;
+        syncData();
+      }
+    }else{
+      render._lastTaskCount = state.tasks.length;
+    }
   }
 
   /* ================= Drag and Drop ================= */
@@ -969,14 +1159,14 @@
       const startHour = parseInt(inner.dataset.startHour, 10) || 8;
       
       let droppedMin = (offsetY / PX_PER_MIN) + (startHour * 60);
-      droppedMin = Math.round(droppedMin / 5) * 5; // 5分単位にスナップ
+      droppedMin = Math.round(droppedMin / 5) * 5;
 
       const t = state.tasks.find(x => x.id === draggedTaskId);
       if(t){
         t.manualStart = droppedMin;
         t.scheduledStart = droppedMin;
         t.scheduledEnd = droppedMin + t.duration;
-        render();
+        syncData().then(()=>render());
         showToast('「' + t.name + '」の時間を ' + minToTimeStr(droppedMin) + ' に変更したよ✨');
       }
       draggedTaskId = null;
@@ -1000,14 +1190,15 @@
   }
   document.getElementById('tmCancel').addEventListener('click', ()=> document.getElementById('taskModal').classList.remove('show'));
   document.getElementById('taskModal').addEventListener('click', (e)=>{ if(e.target.id==='taskModal') e.currentTarget.classList.remove('show'); });
-  document.getElementById('tmSave').addEventListener('click', ()=>{
+  document.getElementById('tmSave').addEventListener('click', async ()=>{
     const name = document.getElementById('tmName').value.trim();
-    const duration = parseInt(document.getElementById('tmDuration').value,10);
+    const durationInput = document.getElementById('tmDuration').value;
+    const duration = parseInt(durationInput, 10);
     const type = document.querySelector('input[name=tmType]:checked').value;
     const dateVal = document.getElementById('tmDate').value;
     const deadlineVal = document.getElementById('tmDeadline').value;
     const startVal = document.getElementById('tmStartTime').value;
-    if(!name || !duration || duration<=0){ showToast('タスクめいと時間を入力してね'); return; }
+    if(!name || isNaN(duration) || duration < 0){ showToast('タスク名と正しい時間を入力してね'); return; }
     
     const manualStart = startVal ? timeStrToMin(startVal) : null;
 
@@ -1031,6 +1222,7 @@
       postToDiscord('📝 [' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
     }
     document.getElementById('taskModal').classList.remove('show');
+    await syncData();
     render();
     showToast('ほぞんしたよ💾');
   });
@@ -1049,12 +1241,13 @@
   }
   document.getElementById('rmCancel').addEventListener('click', ()=> document.getElementById('routineModal').classList.remove('show'));
   document.getElementById('routineModal').addEventListener('click', (e)=>{ if(e.target.id==='routineModal') e.currentTarget.classList.remove('show'); });
-  document.getElementById('rmSave').addEventListener('click', ()=>{
+  document.getElementById('rmSave').addEventListener('click', async ()=>{
     const name = document.getElementById('rmName').value.trim();
-    const duration = parseInt(document.getElementById('rmDuration').value,10);
+    const durationInput = document.getElementById('rmDuration').value;
+    const duration = parseInt(durationInput, 10);
     const type = document.querySelector('input[name=rmType]:checked').value;
     const startVal = document.getElementById('rmStartTime').value;
-    if(!name || !duration || duration<=0){ showToast('タスクめいと時間を入力してね'); return; }
+    if(!name || isNaN(duration) || duration < 0){ showToast('タスク名と正しい時間を入力してね'); return; }
     
     const manualStart = startVal ? timeStrToMin(startVal) : null;
 
@@ -1065,75 +1258,134 @@
       state.routines.push({ id: uid(), name, duration, schedulingType: type, manualStart, active: true });
     }
     document.getElementById('routineModal').classList.remove('show');
+    await syncData();
     render();
     showToast('ルーティンをほぞんしたよ💾');
   });
 
   /* ================= task actions ================= */
-  function handleTaskAction(action, id){
+  async function handleTaskAction(action, id){
     if(action==='toggleRoutineActive'){
-      const r = state.routines.find(x=>x.id===id); if(r){ r.active = !r.active; render(); } return;
+      const r = state.routines.find(x=>x.id===id);
+      if(r){
+        r.active = !r.active;
+        await syncData();
+        render();
+      }
+      return;
     }
+
     if(action==='deleteRoutine'){
       if(!confirm('このルーティンを削除する？（過去の記録は残るよ）')) return;
-      state.routines = state.routines.filter(x=>x.id!==id); render(); return;
+      state.routines = state.routines.filter(x=>x.id!==id);
+      await syncData();
+      render();
+      return;
     }
-    if(action==='editRoutine'){ openRoutineModal('edit', state.routines.find(x=>x.id===id)); return; }
-    if(action==='edit'){ openTaskModal('edit', state.tasks.find(x=>x.id===id)); return; }
+
+    if(action==='editRoutine'){
+      openRoutineModal('edit', state.routines.find(x=>x.id===id));
+      return;
+    }
+
+    if(action==='edit'){
+      openTaskModal('edit', state.tasks.find(x=>x.id===id));
+      return;
+    }
 
     const t = state.tasks.find(x=>x.id===id);
     if(!t) return;
+
     switch(action){
       case 'delete':
         if(!confirm('このタスクを削除する？')) return;
         state.tasks = state.tasks.filter(x=>x.id!==id);
         break;
+
       case 'start':
         if(state.tasks.some(x=> x.assignedDate===todayStr() && (x.status==='active' || x.status==='paused'))){
-          showToast('今のタスクを終わらせてね'); return;
+          showToast('今のタスクを終わらせてね');
+          return;
         }
         t.status='active';
-        t.plannedStart=t.scheduledStart; t.plannedEnd=t.scheduledEnd;
+        t.plannedStart=t.scheduledStart;
+        t.plannedEnd=t.scheduledEnd;
         t.actualStartTs=Date.now();
-        t.scheduledStart=nowMin(); t.scheduledEnd=t.scheduledStart+t.duration;
+        t.scheduledStart=nowMin();
+        t.scheduledEnd=t.scheduledStart+t.duration;
         postToDiscord('▶ [' + t.name + '] を実際に開始したよ！ファイト🔥');
         showToast('「'+t.name+'」スタート！ファイト🔥');
         break;
+
       case 'pause':
-        t.status='paused'; t.pausedAt=Date.now();
+        t.status='paused';
+        t.pausedAt=Date.now();
         showToast('一時停止したよ⏸');
         break;
+
       case 'resume':
-        t.totalPausedMs += (Date.now()-t.pausedAt); t.pausedAt=null; t.status='active';
+        t.totalPausedMs += (Date.now()-t.pausedAt);
+        t.pausedAt=null;
+        t.status='active';
         showToast('再開！がんばれ🔥');
         break;
-      case 'delay15': case 'delay30':
-        { const add = action==='delay15'?15:30; t.duration += add; t.scheduledEnd = t.scheduledStart+t.duration; showToast('⏰'+add+'分えんちょう！'); }
+
+      case 'delay15':
+      case 'delay30':
+        {
+          const add = action==='delay15' ? 15 : 30;
+          t.duration += add;
+          t.scheduledEnd = t.scheduledStart + t.duration;
+          showToast('⏰'+add+'分えんちょう！');
+        }
         break;
+
       case 'done':
         {
-          t.status='done'; t.actualEndTs=Date.now();
-          if(t.plannedStart==null){ t.plannedStart=t.scheduledStart; t.plannedEnd=t.scheduledStart+t.duration; }
-          t.scheduledEnd = Math.max(t.scheduledStart+1, nowMin());
-          const actualMin = Math.max(0, Math.round((t.actualEndTs-(t.actualStartTs||t.actualEndTs)-t.totalPausedMs)/60000));
+          t.status='done';
+          t.actualEndTs=Date.now();
+          if(t.plannedStart==null){
+            t.plannedStart=t.scheduledStart;
+            t.plannedEnd=t.scheduledStart+t.duration;
+          }
+          if(t.scheduledStart != null){
+            t.scheduledEnd = Math.max(t.scheduledStart, nowMin());
+          }
+          const actualMin = Math.max(0, Math.round(
+            (t.actualEndTs-(t.actualStartTs||t.actualEndTs)-t.totalPausedMs)/60000
+          ));
           postToDiscord('💖 [' + t.name + '] を実際に完了したよ！えらい✨（作業時間：約' + actualMin + '分）');
           showToast('「'+t.name+'」かんりょう！おつかれさま💖');
         }
         break;
+
       case 'reopen':
-        t.status='planned'; t.actualStartTs=null; t.actualEndTs=null; t.pausedAt=null; t.totalPausedMs=0;
-        t.scheduledStart=null; t.scheduledEnd=null;
+        t.status='planned';
+        t.actualStartTs=null;
+        t.actualEndTs=null;
+        t.pausedAt=null;
+        t.totalPausedMs=0;
+        t.scheduledStart=null;
+        t.scheduledEnd=null;
         showToast('タスクをもどしたよ↩');
         break;
+
       case 'assignToday':
-        t.assignedDate = todayStr(); t.scheduledStart=null; t.scheduledEnd=null;
+        t.assignedDate=todayStr();
+        t.scheduledStart=null;
+        t.scheduledEnd=null;
         showToast('今日の予定にいれたよ🌸');
         break;
+
       case 'unassign':
-        t.assignedDate = null; t.scheduledStart=null; t.scheduledEnd=null;
+        t.assignedDate=null;
+        t.scheduledStart=null;
+        t.scheduledEnd=null;
         showToast('ToDoにもどしたよ');
         break;
     }
+
+    await syncData();
     render();
   }
 
@@ -1220,11 +1472,12 @@
   document.getElementById('openSettings').addEventListener('click', openSettingsModal);
   document.getElementById('closeSettings').addEventListener('click', ()=> settingsModal.classList.remove('show'));
   settingsModal.addEventListener('click', (e)=>{ if(e.target===settingsModal) settingsModal.classList.remove('show'); });
-  document.getElementById('saveSettings').addEventListener('click', ()=>{
+  document.getElementById('saveSettings').addEventListener('click', async ()=>{
     state.settings.dayStart = document.getElementById('setDayStart').value || '08:00';
     state.settings.dayEnd = document.getElementById('setDayEnd').value || '22:00';
     state.settings.webhook = document.getElementById('setWebhook').value.trim();
     settingsModal.classList.remove('show');
+    await syncData();
     render();
     showToast('せっていをほぞんしたよ💾');
   });
