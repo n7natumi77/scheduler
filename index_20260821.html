@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>きらきら✨スタディプランナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yomogi&family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FFC7DE;
+    --pink-deep:#FF7FAF;
+    --pink-dark:#E8558E;
+    --blue:#BFEAF9;
+    --blue-deep:#6FC6E8;
+    --lavender:#E3D6FF;
+    --lavender-deep:#B79CF0;
+    --yellow:#FFF3B0;
+    --yellow-deep:#F2CF4A;
+    --paper:#FFFDF7;
+    --text:#6B4C6E;
+    --text-soft:#9A7B9C;
+    --line:#F0A8C6;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN',sans-serif;
+    color:var(--text);
+    min-height:100vh;
+    background-color:#FFF6FB;
+    background-image:radial-gradient(circle, #ffffff 2px, transparent 2.4px);
+    background-size:26px 26px;
+    padding:20px 14px 60px;
+  }
+  .washi{
+    position:absolute; top:-10px; left:22px;
+    width:74px; height:26px;
+    background:repeating-linear-gradient(45deg, var(--yellow) 0 6px, #FFFBE0 6px 12px);
+    opacity:.9; transform:rotate(-4deg);
+    border:2px dashed #fff;
+    border-radius:4px;
+    box-shadow:0 2px 3px rgba(0,0,0,.08);
+  }
+  .app{max-width:1180px;margin:0 auto;}
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    background:linear-gradient(135deg,var(--pink) 0%, var(--lavender) 100%);
+    border:3px solid #fff;
+    outline:3px dashed var(--pink-dark);
+    outline-offset:-8px;
+    border-radius:26px;
+    padding:16px 22px;
+    margin-bottom:14px;
+    box-shadow:5px 5px 0 var(--pink-dark);
+    position:relative;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .title-wrap{display:flex; align-items:center; gap:10px;}
+  .charm{font-size:26px; display:inline-block; animation:sway 2.6s ease-in-out infinite; transform-origin:top center;}
+  @keyframes sway{0%,100%{transform:rotate(-8deg);}50%{transform:rotate(8deg);}}
+  h1{font-family:'Yomogi',cursive; font-size:26px; margin:0; color:var(--pink-dark);
+     text-shadow:2px 2px 0 #fff, -1px -1px 0 #fff; letter-spacing:1px;}
+  h1 span{color:var(--blue-deep);}
+  .subtitle{font-size:11px;color:var(--text-soft);margin-top:2px;}
+  .header-actions{display:flex; align-items:center; gap:8px;}
+  .icon-btn{
+    background:#fff; border:3px solid var(--pink-dark); border-radius:50%;
+    width:46px;height:46px; font-size:20px; cursor:pointer;
+    box-shadow:3px 3px 0 var(--pink-dark); transition:transform .12s; flex-shrink:0;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{transform:translateY(-2px) rotate(-6deg);}
+  .icon-btn:active{transform:translateY(1px);box-shadow:1px 1px 0 var(--pink-dark);}
+
+  .user-badge{
+    font-size:11px; background:#fff; border:2px solid var(--pink-dark);
+    padding:4px 10px; border-radius:12px; font-weight:bold; color:var(--pink-dark);
+  }
+
+  /* ---------- nav tabs ---------- */
+  .tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab-btn{
+    font-family:inherit; font-weight:800; font-size:12.5px; padding:9px 16px;
+    border-radius:16px; border:2px solid var(--pink-dark); background:#fff; color:var(--pink-dark);
+    cursor:pointer; box-shadow:2px 2px 0 var(--pink-dark); transition:.12s;
+  }
+  .tab-btn.active{background:var(--pink-deep); color:#fff;}
+  .tab-btn:hover{transform:translateY(-1px);}
+
+  /* ---------- day nav ---------- */
+  .day-nav{display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+  .day-nav .date-label{font-family:'Yomogi',cursive; font-size:18px; color:var(--pink-dark); font-weight:700; white-space:nowrap;}
+  .day-nav input[type=date]{border:2px solid var(--pink); border-radius:10px; padding:7px 10px; font-family:inherit; margin-left:auto; background:#fff;}
+  .nav-arrow{width:40px;height:40px;font-size:15px;}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start;}
+  @media (max-width:880px){.layout{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--paper); border:3px solid #fff; outline:3px dashed var(--line); outline-offset:-7px;
+    border-radius:var(--radius); box-shadow:5px 5px 0 var(--line); padding:20px 18px 18px; position:relative; margin-bottom:18px;
+  }
+  .card h2{font-family:'Yomogi',cursive; font-size:19px; margin:0 0 12px; color:var(--pink-dark); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+
+  /* ---------- timeline card ---------- */
+  .timeline-card{padding-left:34px;}
+  .binder-holes{position:absolute; left:10px; top:20px; bottom:20px; width:14px; display:flex; flex-direction:column; justify-content:space-between;}
+  .binder-holes span{display:block; width:12px; height:12px; border-radius:50%; background:#FFF6FB; border:2px solid var(--pink); box-shadow:inset 0 1px 2px rgba(0,0,0,.15);}
+  .now-badge{font-size:11px; background:var(--yellow); border:2px solid var(--yellow-deep); padding:2px 10px; border-radius:20px; color:#8a6d00; font-weight:700; margin-left:auto;}
+
+  .timeline-scroll{
+    max-height:520px; overflow-y:auto; overflow-x:hidden; border-radius:14px;
+    background:repeating-linear-gradient(#fff 0 1px, #FFFDF9 1px 2px);
+    border:2px dashed var(--line); padding:6px 10px 6px 0; position:relative;
+  }
+  .timeline-inner{position:relative;}
+  .hour-row{border-top:1px dotted #EBC9D8;}
+  .hour-label{position:absolute; left:0; top:-9px; font-size:11px; color:var(--text-soft); background:var(--paper); padding:0 4px; font-weight:700;}
+  .task-block{
+    position:absolute; left:56px; right:8px; border-radius:12px; padding:5px 10px; font-size:12px; color:#5b3a4e;
+    overflow:hidden; border:2px solid rgba(255,255,255,.8); box-shadow:2px 2px 0 rgba(0,0,0,.08);
+    cursor: grab; user-select: none;
+  }
+  .task-block:active{ cursor: grabbing; opacity: 0.8; }
+  .task-block b{display:block;font-size:12.5px;}
+  .task-block .tb-time{font-size:10px;opacity:.85;}
+  .type-fixed{background:repeating-linear-gradient(135deg, var(--lavender) 0 8px, #F1E7FF 8px 16px); border-color:var(--lavender-deep);}
+  .type-flexible{background:var(--pink); border-color:var(--pink-dark);}
+  .type-tomorrow{background:var(--yellow); border-color:var(--yellow-deep);}
+  .task-block.is-active{outline:3px solid #FF3E82; outline-offset:1px; box-shadow:0 0 0 3px rgba(255,62,130,.25), 2px 2px 0 rgba(0,0,0,.08);}
+  .task-block.is-done{opacity:.55; text-decoration:line-through;}
+  .now-line{position:absolute; left:0; right:0; height:0; border-top:2px solid #FF3E82; pointer-events:none;}
+  .now-line::before{content:'いま♡'; position:absolute; left:-2px; top:-10px; background:#FF3E82; color:#fff; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px;}
+
+  /* ---------- form fields ---------- */
+  .field{margin-bottom:12px;}
+  .field label{font-size:12px; font-weight:700; color:var(--pink-dark); display:block; margin-bottom:4px;}
+  .field input[type=text], .field input[type=number], .field input[type=time], .field input[type=date], .field input[type=email], .field input[type=password], .field select, .field input[type=url]{
+    width:100%; border:2px solid var(--pink); background:#fff; border-radius:12px; padding:9px 12px;
+    font-family:inherit; font-size:14px; color:var(--text); outline:none;
+  }
+  .field input:focus, .field select:focus{border-color:var(--pink-dark);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .type-choice{display:flex; gap:6px; flex-wrap:wrap;}
+  .type-choice label{
+    flex:1; min-width:96px; text-align:center; font-size:11.5px; font-weight:700;
+    border:2px solid var(--pink); border-radius:12px; padding:8px 4px; cursor:pointer;
+    background:#fff; color:var(--text-soft); transition:.15s;
+  }
+  .type-choice input{display:none;}
+  .type-choice label:has(input:checked){background:var(--pink); border-color:var(--pink-dark); color:var(--pink-dark); box-shadow:2px 2px 0 var(--pink-dark);}
+
+  .btn{font-family:inherit; font-weight:800; font-size:14px; border-radius:16px; border:2px solid var(--pink-dark);
+       padding:10px 16px; cursor:pointer; background:var(--pink-deep); color:#fff; box-shadow:3px 3px 0 var(--pink-dark); transition:transform .1s;}
+  .btn:hover{transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px); box-shadow:1px 1px 0 var(--pink-dark);}
+  .btn.full{width:100%;}
+  .btn.blue{background:var(--blue-deep); border-color:#3AA6CC; box-shadow:3px 3px 0 #3AA6CC;}
+  .btn.small{font-size:11px; padding:6px 10px; border-radius:12px; box-shadow:2px 2px 0 var(--pink-dark);}
+  .btn.ghost{background:#fff; color:var(--pink-dark);}
+  .btn.gray{background:#eee; color:#888; border-color:#ccc; box-shadow:2px 2px 0 #ccc;}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+
+  /* ---------- task card ---------- */
+  .task-card{background:#fff; border:2px solid var(--pink); border-radius:16px; padding:10px 12px; margin-bottom:10px; position:relative;}
+  .task-card.active-card{border-color:#FF3E82; box-shadow:0 0 0 3px rgba(255,62,130,.18);}
+  .task-top{display:flex; justify-content:space-between; align-items:flex-start; gap:6px;}
+  .task-name{font-weight:800; font-size:14.5px;}
+  .badge{font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;}
+  .badge.fixed{background:var(--lavender); color:#6B4CA8;}
+  .badge.flexible{background:var(--pink); color:var(--pink-dark);}
+  .badge.tomorrow{background:var(--yellow); color:#8a6d00;}
+  .task-meta{font-size:11.5px; color:var(--text-soft); margin-top:4px; line-height:1.6;}
+  .task-actions{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center;}
+  .timer{font-family:'M PLUS Rounded 1c'; font-weight:800; font-size:14px; background:#FFE8F1; color:#FF3E82; border-radius:10px; padding:3px 10px; border:2px solid #FF3E82;}
+  .timer.over{background:#FFD3D3; color:#D6002B; border-color:#D6002B;}
+  .empty{font-size:12.5px; color:var(--text-soft); text-align:center; padding:14px 4px;}
+  .tomorrow-card .task-name::before{content:'🌙 ';}
+
+  /* ---------- todo columns ---------- */
+  .todo-cols{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  @media (max-width:880px){.todo-cols{grid-template-columns:1fr;}}
+  .todo-col h3{font-family:'Yomogi',cursive; font-size:15px; color:var(--pink-dark); margin:0 0 10px;}
+
+  /* ---------- week view ---------- */
+  .week-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
+  @media (max-width:820px){.week-grid{grid-template-columns:1fr 1fr; }}
+  .week-col{background:#fff; border:2px solid var(--pink); border-radius:14px; padding:8px; min-height:150px;}
+  .week-col.today{border-color:#FF3E82; box-shadow:0 0 0 3px rgba(255,62,130,.15);}
+  .week-col-head{font-weight:800; font-size:12px; text-align:center; padding-bottom:6px; border-bottom:2px dashed var(--pink); margin-bottom:6px; cursor:pointer;}
+  .week-col-head.sun{color:#FF6F91;}
+  .week-col-head.sat{color:#4FA8D8;}
+  .wk-chip{font-size:10.5px; border-radius:8px; padding:3px 6px; margin-bottom:4px; border:1px solid rgba(0,0,0,.06); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  /* ---------- month view ---------- */
+  .month-weekday-row{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; font-size:11px; font-weight:800; text-align:center; color:var(--text-soft);}
+  .month-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .month-cell{background:#fff; border:2px solid var(--pink); border-radius:12px; min-height:66px; padding:5px; cursor:pointer; transition:.1s;}
+  .month-cell:hover{transform:translateY(-1px);}
+  .month-cell.other-month{opacity:.35;}
+  .month-cell.today{border-color:#FF3E82; box-shadow:0 0 0 2px rgba(255,62,130,.15);}
+  .month-date{font-size:11px; font-weight:800;}
+  .month-dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:4px;}
+  .dot{width:7px;height:7px;border-radius:50%;}
+  .dot.fixed{background:var(--lavender-deep);}
+  .dot.flexible{background:var(--pink-dark);}
+  .dot.flow{background:var(--yellow-deep);}
+
+  /* ---------- modal ---------- */
+  .modal-bg{position:fixed; inset:0; background:rgba(107,76,110,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; overflow-y:auto;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--paper); border-radius:22px; border:3px solid #fff; outline:3px dashed var(--pink-dark); outline-offset:-7px;
+         box-shadow:6px 6px 0 var(--pink-dark); max-width:420px; width:100%; padding:22px; margin:auto;}
+  .modal h2{margin-top:0; font-family:'Yomogi',cursive; color:var(--pink-dark);}
+  .modal-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;}
+  .hint{font-size:11px; color:var(--text-soft); margin-top:4px; line-height:1.5;}
+
+  #toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#FF7FAF; color:#fff; font-weight:800; font-size:13px; padding:10px 20px; border-radius:20px; border:2px solid #fff;
+    box-shadow:3px 3px 0 var(--pink-dark); opacity:0; pointer-events:none; transition:.25s; z-index:80; white-space:nowrap; max-width:90vw; text-overflow:ellipsis; overflow:hidden;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--pink); border-radius:10px;}
+  ::-webkit-scrollbar-track{background:#fff6fb;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="title-wrap">
+      <span class="charm">💗</span>
+      <div>
+        <h1>きらきら<span>♪</span>スタディプランナー</h1>
+        <div class="subtitle">今日もえらい！がんばったらDiscordにおしらせするよ✨</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="userStatus" class="user-badge" style="display:none;"></span>
+      <button class="icon-btn" id="openAuth" title="ログイン/登録">👤</button>
+      <button class="icon-btn" id="openSettings" title="せってい">⚙️</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn" data-view="day">📅 日</button>
+    <button class="tab-btn" data-view="week">🗓 週</button>
+    <button class="tab-btn" data-view="month">🗓 月</button>
+    <button class="tab-btn" data-view="todo">✅ ToDo</button>
+    <button class="tab-btn" data-view="routine">🔁 ルーティン</button>
+  </nav>
+
+  <div id="viewRoot"></div>
+</div>
+
+<!-- Auth modal -->
+<div class="modal-bg" id="authModal">
+  <div class="modal">
+    <h2 id="authTitle">🔑 ログイン / アカウント登録</h2>
+    <div class="field">
+      <label>メールアドレス</label>
+      <input type="email" id="authEmail" placeholder="example@email.com">
+    </div>
+    <div class="field">
+      <label>パスワード</label>
+      <input type="password" id="authPassword" placeholder="6文字以上">
+    </div>
+    <div class="modal-actions" style="justify-content: space-between;">
+      <button class="btn gray" id="authLogoutBtn" style="display:none;">ログアウト</button>
+      <div style="display:flex; gap:8px; margin-left:auto;">
+        <button class="btn ghost" id="closeAuth">とじる</button>
+        <button class="btn blue" id="authRegisterBtn">新規登録</button>
+        <button class="btn" id="authLoginBtn">ログイン</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h2>⚙️ せってい</h2>
+    <div class="row2">
+      <div class="field"><label>1日のはじまり</label><input type="time" id="setDayStart"></div>
+      <div class="field"><label>1日のおわり</label><input type="time" id="setDayEnd"></div>
+    </div>
+    <div class="field">
+      <label>Discord Webhook URL</label>
+      <input type="url" id="setWebhook" placeholder="https://discord.com/api/webhooks/...">
+      <div class="hint">タスク追加・開始・完了時や時刻になった際に通知を送信します。</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="testWebhook">テスト送信</button>
+      <button class="btn gray" id="closeSettings">とじる</button>
+      <button class="btn" id="saveSettings">💾 ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<!-- task modal -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal">
+    <h2 id="taskModalTitle">✏️ タスクをついか</h2>
+    <div class="field"><label>タスクめい</label><input type="text" id="tmName" placeholder="例）すうがくの宿題"></div>
+    <div class="row2">
+      <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="5" step="5" value="30"></div>
+      <div class="field"><label>開始時刻（任意）</label><input type="time" id="tmStartTime"></div>
+    </div>
+    <div class="field">
+      <label>タイプ</label>
+      <div class="type-choice">
+        <label><input type="radio" name="tmType" value="flexible" checked><span>🌸ずれてOK</span></label>
+        <label><input type="radio" name="tmType" value="fixed"><span>⏰固定予定</span></label>
+        <label><input type="radio" name="tmType" value="flow"><span>🌙あふれたら翌日</span></label>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>追加する日</label>
+        <input type="date" id="tmDate">
+        <div class="hint">空欄だとToDo（日付みてい）になるよ</div>
+      </div>
+      <div class="field">
+        <label>期限（任意）</label>
+        <input type="date" id="tmDeadline">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn gray" id="tmCancel">とじる</button>
+      <button class="btn" id="tmSave">💾 ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<!-- routine modal -->
+<div class="modal-bg" id="routineModal">
+  <div class="modal">
+    <h2 id="routineModalTitle">🔁 ルーティンをついか</h2>
+    <div class="field"><label>タスクめい</label><input type="text" id="rmName" placeholder="例）朝のストレッチ"></div>
+    <div class="row2">
+      <div class="field"><label>所要時間（分）</label><input type="number" id="rmDuration" min="5" step="5" value="15"></div>
+      <div class="field"><label>開始時刻（任意）</label><input type="time" id="rmStartTime"></div>
+    </div>
+    <div class="field">
+      <label>タイプ</label>
+      <div class="type-choice">
+        <label><input type="radio" name="rmType" value="flexible" checked><span>🌸ずれてOK</span></label>
+        <label><input type="radio" name="rmType" value="fixed"><span>⏰固定予定</span></label>
+        <label><input type="radio" name="rmType" value="flow"><span>🌙あふれたら翌日</span></label>
+      </div>
+    </div>
+    <div class="hint">毎日じどうで予定に追加されるよ🔁</div>
+    <div class="modal-actions">
+      <button class="btn gray" id="rmCancel">とじる</button>
+      <button class="btn" id="rmSave">💾 ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase SDK (v10 JS Modules) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    onSnapshot 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+
+
+  import { initializeApp } from "firebase/app";
+  import { getFirestore } from "firebase/firestore";
+  import { getAuth } from "firebase/auth";
+
+
+  // ★ご自身のFirebaseプロジェクトの設定値をここに貼り付けてください
+  const firebaseConfig = {
+    apiKey: "AIzaSyD-rsAZ3ZpebNlpYoNKkpwWB7zbdsG4_Eo",
+    authDomain: "test-b1f84.firebaseapp.com",
+    projectId: "test-b1f84",
+    storageBucket: "test-b1f84.firebasestorage.app",
+    messagingSenderId: "900401238823",
+    appId: "1:900401238823:web:2241c03056bdc5393d4f02",
+    measurementId: "G-9WEX01BX81"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  window.fbAuth = auth;
+  window.fbDb = db;
+  window.fbMethods = {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    doc,
+    setDoc,
+    onSnapshot
+  };
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= storage ================= */
+  const LS_TASKS = 'sp_tasks_v2';
+  const LS_ROUTINES = 'sp_routines_v1';
+  const LS_SETTINGS = 'sp_settings_v2';
+
+  function loadLocalTasks(){ try{ return JSON.parse(localStorage.getItem(LS_TASKS)) || []; }catch(e){ return []; } }
+  function saveLocalTasks(){ localStorage.setItem(LS_TASKS, JSON.stringify(state.tasks)); }
+  function loadLocalRoutines(){ try{ return JSON.parse(localStorage.getItem(LS_ROUTINES)) || []; }catch(e){ return []; } }
+  function saveLocalRoutines(){ localStorage.setItem(LS_ROUTINES, JSON.stringify(state.routines)); }
+  function loadLocalSettings(){
+    try{
+      const s = JSON.parse(localStorage.getItem(LS_SETTINGS));
+      if(s) return Object.assign({dayStart:'08:00', dayEnd:'22:00', webhook:''}, s);
+    }catch(e){}
+    return {dayStart:'08:00', dayEnd:'22:00', webhook:''};
+  }
+  function saveLocalSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); }
+
+  const state = {
+    tasks: loadLocalTasks(),
+    routines: loadLocalRoutines(),
+    settings: loadLocalSettings(),
+    currentView: 'day',
+    viewDate: null,
+    currentUser: null,
+    unsubscribeFirestore: null
+  };
+
+  function syncData(){
+    if(state.currentUser && window.fbMethods){
+      const uid = state.currentUser.uid;
+      const ref = window.fbMethods.doc(window.fbDb, "users", uid);
+      window.fbMethods.setDoc(ref, {
+        tasks: state.tasks,
+        routines: state.routines,
+        settings: state.settings
+      }, { merge: true });
+    } else {
+      saveLocalTasks();
+      saveLocalRoutines();
+      saveLocalSettings();
+    }
+  }
+
+  /* ================= firebase auth init ================= */
+  function initAuth(){
+    if(!window.fbAuth) { setTimeout(initAuth, 200); return; }
+    window.fbMethods.onAuthStateChanged(window.fbAuth, (user)=>{
+      state.currentUser = user;
+      const statusEl = document.getElementById('userStatus');
+      const authLogoutBtn = document.getElementById('authLogoutBtn');
+      if(user){
+        statusEl.textContent = user.email;
+        statusEl.style.display = 'inline-block';
+        authLogoutBtn.style.display = 'inline-block';
+        
+        // リアルタイム同期開始
+        if(state.unsubscribeFirestore) state.unsubscribeFirestore();
+        const ref = window.fbMethods.doc(window.fbDb, "users", user.uid);
+        state.unsubscribeFirestore = window.fbMethods.onSnapshot(ref, (docSnap)=>{
+          if(docSnap.exists()){
+            const data = docSnap.data();
+            if(data.tasks) state.tasks = data.tasks;
+            if(data.routines) state.routines = data.routines;
+            if(data.settings) state.settings = data.settings;
+            render();
+          }
+        });
+      } else {
+        statusEl.style.display = 'none';
+        authLogoutBtn.style.display = 'none';
+        if(state.unsubscribeFirestore){
+          state.unsubscribeFirestore();
+          state.unsubscribeFirestore = null;
+        }
+        state.tasks = loadLocalTasks();
+        state.routines = loadLocalRoutines();
+        state.settings = loadLocalSettings();
+        render();
+      }
+    });
+  }
+  setTimeout(initAuth, 500);
+
+  /* ================= date / time utils ================= */
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function dateToStr(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+  function todayStr(){ return dateToStr(new Date()); }
+  function strToDate(s){ const p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+  function addDays(s,n){ const d=strToDate(s); d.setDate(d.getDate()+n); return dateToStr(d); }
+  function startOfWeek(s){ const d=strToDate(s); d.setDate(d.getDate()-d.getDay()); return dateToStr(d); }
+  function shiftMonth(s,n){ const d=strToDate(s); d.setMonth(d.getMonth()+n,1); return dateToStr(d); }
+  const WD = ['日','月','火','水','木','金','土'];
+  function formatDateJP(s){ const d=strToDate(s); return (d.getMonth()+1)+'月'+d.getDate()+'日('+WD[d.getDay()]+')'; }
+  function formatShort(s){ const d=strToDate(s); return (d.getMonth()+1)+'/'+d.getDate(); }
+  function formatMonthJP(s){ const d=strToDate(s); return d.getFullYear()+'年'+(d.getMonth()+1)+'月'; }
+
+  function timeStrToMin(str){ if(!str) return null; const p=str.split(':').map(Number); return p[0]*60+p[1]; }
+  function minToTimeStr(min){ if(min==null) return ''; min=Math.round(min); const h=Math.floor(min/60), m=((min%60)+60)%60; return pad2(h)+':'+pad2(m); }
+  function nowMin(){ const d=new Date(); return d.getHours()*60 + d.getMinutes() + d.getSeconds()/60; }
+
+  const PX_PER_MIN = 1.7;
+  function uid(){ return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._tm);
+    showToast._tm = setTimeout(()=> t.classList.remove('show'), 2600);
+  }
+
+  /* ================= labels ================= */
+  function typeLabel(type){ return type==='fixed' ? '固定予定' : type==='flow' ? 'あfullたら翌日' : 'ずれてOK'; }
+  function typeBadgeClass(type){ return type==='fixed' ? 'fixed' : type==='flow' ? 'tomorrow' : 'flexible'; }
+  function typeBlockClass(type){ return type==='fixed' ? 'type-fixed' : type==='flow' ? 'type-tomorrow' : 'type-flexible'; }
+
+  /* ================= routines -> daily instances ================= */
+  function ensureRoutineInstances(dateStr){
+    state.routines.forEach(r=>{
+      if(!r.active) return;
+      const exists = state.tasks.some(t=> t.routineId===r.id && t.assignedDate===dateStr);
+      if(!exists){
+        state.tasks.push({
+          id: uid(), name: r.name, duration: r.duration, schedulingType: r.schedulingType,
+          manualStart: r.manualStart || null, assignedDate: dateStr, deadline: null,
+          routineId: r.id, status: 'planned',
+          scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
+          actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
+          order: Date.now()+Math.random(), pushedFromDate: null,
+          notifiedStart: false, notifiedEnd: false
+        });
+      }
+    });
+  }
+
+  /* ================= scheduling engine (per date) ================= */
+  function recalcScheduleForDate(dateStr){
+    const dayStart = timeStrToMin(state.settings.dayStart);
+    const dayEnd = timeStrToMin(state.settings.dayEnd);
+    const isToday = dateStr === todayStr();
+    const now = nowMin();
+
+    const dayTasks = state.tasks.filter(t=>t.assignedDate===dateStr);
+
+    const fixedIntervals = [];
+    dayTasks.forEach(t=>{
+      if(t.schedulingType === 'fixed' || t.manualStart != null){
+        const start = t.manualStart != null ? t.manualStart : dayStart;
+        t.scheduledStart = start;
+        t.scheduledEnd = start + t.duration;
+        if(t.status !== 'done') fixedIntervals.push({start:t.scheduledStart, end:t.scheduledEnd});
+      }
+    });
+    fixedIntervals.sort((a,b)=>a.start-b.start);
+
+    const busy = dayTasks.find(t=> t.status==='active' || t.status==='paused');
+    let pointer;
+    if(busy){
+      pointer = busy.scheduledStart + busy.duration;
+    } else if(isToday){
+      pointer = Math.max(now, dayStart);
+    } else {
+      pointer = dayStart;
+    }
+
+    const queue = dayTasks.filter(t=> t.status==='planned' && t.schedulingType!=='fixed' && t.manualStart == null)
+      .sort((a,b)=> (a.order||0) - (b.order||0));
+
+    queue.forEach(t=>{
+      let moved = true;
+      while(moved){
+        moved = false;
+        for(const fi of fixedIntervals){
+          if(pointer < fi.end && pointer + t.duration > fi.start){ pointer = fi.end; moved = true; }
+        }
+      }
+      const tentativeEnd = pointer + t.duration;
+      if(t.schedulingType === 'flow' && tentativeEnd > dayEnd){
+        t.assignedDate = addDays(dateStr,1);
+        t.pushedFromDate = dateStr;
+        t.scheduledStart = null;
+        t.scheduledEnd = null;
+        return;
+      }
+      t.scheduledStart = pointer;
+      t.scheduledEnd = tentativeEnd;
+      pointer = tentativeEnd;
+    });
+  }
+
+  /* ================= timer & alert triggers ================= */
+  function effectiveElapsedMin(t){
+    if(!t.actualStartTs) return 0;
+    const endTs = t.status==='done' ? t.actualEndTs : (t.status==='paused' ? t.pausedAt : Date.now());
+    return Math.max(0, (endTs - t.actualStartTs - t.totalPausedMs) / 60000);
+  }
+  function fmtCountdown(remainMin){
+    const over = remainMin < 0;
+    const abs = Math.abs(remainMin);
+    const m = Math.floor(abs);
+    const s = Math.floor((abs-m)*60);
+    return { str: pad2(m)+':'+pad2(s), over };
+  }
+
+  function checkTimeNotifications(){
+    const today = todayStr();
+    const now = nowMin();
+    let updated = false;
+
+    state.tasks.forEach(t=>{
+      if(t.assignedDate === today && t.status === 'planned' && t.scheduledStart != null){
+        // 開始時刻になった通知
+        if(!t.notifiedStart && now >= t.scheduledStart){
+          t.notifiedStart = true;
+          updated = true;
+          postToDiscord('⏰ [' + t.name + '] の開始時刻になりました！（' + minToTimeStr(t.scheduledStart) + '）');
+        }
+        // 終了予定時刻になった通知
+        if(!t.notifiedEnd && now >= t.scheduledEnd){
+          t.notifiedEnd = true;
+          updated = true;
+          postToDiscord('🔔 [' + t.name + '] の終了予定時刻になりました！（' + minToTimeStr(t.scheduledEnd) + '）');
+        }
+      }
+    });
+    if(updated) syncData();
+  }
+
+  /* ================= discord ================= */
+  async function postToDiscord(message){
+    const url = state.settings.webhook;
+    if(!url) return;
+    try{
+      await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({content: message}) });
+    }catch(e){
+      console.warn('webhook error', e);
+    }
+  }
+
+  /* ================= task card html (shared) ================= */
+  function taskCardHTML(t, opts){
+    opts = opts || {};
+    const isToday = t.assignedDate === todayStr();
+    const anyBusyToday = state.tasks.some(x=> x.assignedDate===todayStr() && (x.status==='active' || x.status==='paused'));
+    const overdue = t.deadline && t.deadline < todayStr() && t.status!=='done';
+
+    let timeInfo;
+    if(t.status==='done'){
+      const plannedTxt = (t.plannedStart!=null) ? ('予定 '+minToTimeStr(t.plannedStart)+'〜'+minToTimeStr(t.plannedEnd)) : '';
+      const actualMin = (t.actualStartTs && t.actualEndTs) ? Math.max(0, Math.round((t.actualEndTs - t.actualStartTs - t.totalPausedMs)/60000)) : t.duration;
+      timeInfo = plannedTxt + (plannedTxt?'<br>':'') + '実際 約' + actualMin + '分でかんりょう';
+    } else if(t.scheduledStart != null){
+      timeInfo = '🕒 ' + minToTimeStr(t.scheduledStart) + '〜' + minToTimeStr(t.scheduledEnd);
+    } else {
+      timeInfo = t.assignedDate ? '（時間調整中…）' : 'ToDo（日付みてい）';
+    }
+    if(opts.showDate && t.assignedDate){
+      timeInfo += ' 📅' + formatDateJP(t.assignedDate);
+    }
+    if(t.deadline){
+      timeInfo += ' ・ <span style="color:'+(overdue?'#D6002B':'#999')+'">〆'+formatDateJP(t.deadline)+(overdue?'(期限切れ)':'')+'</span>';
+    }
+
+    let timerHtml = '';
+    let actionsHtml = '';
+    if(t.status==='active'){
+      const remain = t.duration - effectiveElapsedMin(t);
+      const c = fmtCountdown(remain);
+      timerHtml = '<span class="timer '+(c.over?'over':'')+'">'+(c.over?'⏰オーバー ':'⏳残り ')+c.str+'</span>';
+      actionsHtml = '<button class="btn small blue" data-action="pause" data-id="'+t.id+'">⏸一時停止</button>'
+        + '<button class="btn small blue" data-action="delay15" data-id="'+t.id+'">+15分</button>'
+        + '<button class="btn small blue" data-action="delay30" data-id="'+t.id+'">+30分</button>'
+        + '<button class="btn small" data-action="done" data-id="'+t.id+'">💖完了</button>';
+    } else if(t.status==='paused'){
+      const remain = t.duration - effectiveElapsedMin(t);
+      const c = fmtCountdown(remain);
+      timerHtml = '<span class="timer" style="background:#eee;color:#888;border-color:#ccc;">⏸ '+c.str+'</span>';
+      actionsHtml = '<button class="btn small blue" data-action="resume" data-id="'+t.id+'">▶再開</button>'
+        + '<button class="btn small blue" data-action="delay15" data-id="'+t.id+'">+15分</button>'
+        + '<button class="btn small blue" data-action="delay30" data-id="'+t.id+'">+30分</button>'
+        + '<button class="btn small" data-action="done" data-id="'+t.id+'">💖完了</button>';
+    } else if(t.status==='planned'){
+      const canStart = isToday && !anyBusyToday;
+      actionsHtml = '<button class="btn small" data-action="start" data-id="'+t.id+'" '+(canStart?'':'disabled')+'>▶はじめる</button>';
+      if(opts.showAssignBtn && !t.assignedDate){
+        actionsHtml += '<button class="btn small blue" data-action="assignToday" data-id="'+t.id+'">📅今日にいれる</button>';
+      }
+      if(opts.showUnassign && t.assignedDate){
+        actionsHtml += '<button class="btn small ghost" data-action="unassign" data-id="'+t.id+'">外す</button>';
+      }
+    } else if(t.status==='done'){
+      actionsHtml = '<button class="btn small ghost" data-action="reopen" data-id="'+t.id+'">↩やりなおす</button>';
+    }
+    actionsHtml += ' <button class="btn small ghost" data-action="edit" data-id="'+t.id+'">✏️</button>'
+      + '<button class="btn small gray" data-action="delete" data-id="'+t.id+'">🗑</button>';
+
+    return '<div class="task-card '+(t.status==='active'?'active-card':'')+'">'
+      + '<div class="task-top">'
+      + '<div class="task-name">'+(t.routineId?'🔁 ':'')+escapeHtml(t.name)+'</div>'
+      + '<span class="badge '+typeBadgeClass(t.schedulingType)+'">'+typeLabel(t.schedulingType)+'</span>'
+      + '</div>'
+      + '<div class="task-meta">'+timeInfo+'</div>'
+      + '<div class="task-actions">'+actionsHtml+timerHtml+'</div>'
+      + '</div>';
+  }
+
+  /* ================= timeline html builder ================= */
+  function buildTimelineHTML(dateStr, isToday){
+    const dayStart = timeStrToMin(state.settings.dayStart);
+    const dayEnd = timeStrToMin(state.settings.dayEnd);
+    const scheduled = state.tasks.filter(t=> t.assignedDate===dateStr && t.scheduledStart!=null);
+    let maxEnd = dayEnd;
+    scheduled.forEach(t=>{ if(t.scheduledEnd>maxEnd) maxEnd=t.scheduledEnd; });
+    const startHour = Math.floor(dayStart/60);
+    const endHour = Math.max(startHour+1, Math.ceil(maxEnd/60));
+    const height = (endHour-startHour)*60*PX_PER_MIN;
+
+    let html = '<div class="timeline-inner" style="height:'+height+'px;" data-start-hour="'+startHour+'">';
+    for(let h=startHour; h<endHour; h++){
+      const top = (h-startHour)*60*PX_PER_MIN;
+      const label = h>=24 ? (h-24)+':00(翌)' : h+':00';
+      html += '<div class="hour-row" style="position:absolute;top:'+top+'px;left:0;right:0;height:'+(60*PX_PER_MIN)+'px;"><span class="hour-label">'+label+'</span></div>';
+    }
+    scheduled.forEach(t=>{
+      const top = (t.scheduledStart-startHour*60)*PX_PER_MIN;
+      const h = Math.max(24, (t.scheduledEnd-t.scheduledStart)*PX_PER_MIN);
+      const stateClass = t.status==='active' ? 'is-active' : t.status==='done' ? 'is-done' : '';
+      const mark = t.status==='done' ? '✅ ' : t.status==='paused' ? '⏸ ' : '';
+      html += '<div class="task-block '+typeBlockClass(t.schedulingType)+' '+stateClass+'" draggable="true" data-id="'+t.id+'" style="top:'+top+'px;height:'+h+'px;">'
+        + '<b>'+mark+escapeHtml(t.name)+'</b>'
+        + '<span class="tb-time">'+minToTimeStr(t.scheduledStart)+'〜'+minToTimeStr(t.scheduledEnd)+'</span></div>';
+    });
+    if(isToday){
+      const now = nowMin();
+      if(now >= startHour*60 && now <= endHour*60){
+        const top = (now-startHour*60)*PX_PER_MIN;
+        html += '<div class="now-line" style="top:'+top+'px;"></div>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  /* ================= view renderers ================= */
+  function renderDayView(){
+    const dateStr = state.viewDate;
+    ensureRoutineInstances(dateStr);
+    recalcScheduleForDate(dateStr);
+    const isToday = dateStr === todayStr();
+
+    const timelineHtml = buildTimelineHTML(dateStr, isToday);
+
+    const notDone = state.tasks.filter(t=> t.assignedDate===dateStr && t.status!=='done');
+    const done = state.tasks.filter(t=> t.assignedDate===dateStr && t.status==='done');
+    const queueTasks = notDone.concat(done).sort((a,b)=>{
+      const rank = s => s==='active' ? 0 : s==='paused' ? 1 : s==='planned' ? 2 : 3;
+      const r = rank(a.status)-rank(b.status);
+      if(r!==0) return r;
+      return (a.scheduledStart==null?9999:a.scheduledStart) - (b.scheduledStart==null?9999:b.scheduledStart);
+    });
+    const queueHtml = queueTasks.length ? queueTasks.map(t=>taskCardHTML(t,{showDate:false})).join('')
+      : '<div class="empty">タスクがまだないよ〜💤<br>「＋ついか」から追加してね！</div>';
+
+    const pushedList = state.tasks.filter(t=> t.pushedFromDate===dateStr && t.assignedDate===addDays(dateStr,1) && t.status!=='done');
+    const pushedHtml = pushedList.length ? pushedList.map(t=>
+        '<div class="task-card tomorrow-card"><div class="task-name">'+escapeHtml(t.name)+'</div>'
+        + '<div class="task-meta">⌛'+t.duration+'分・今日の時間には入りきらなかったよ</div></div>').join('')
+      : '<div class="empty">今日中に収まってるよ、えらい🌟</div>';
+
+    return '<div class="day-nav">'
+      + '<button class="icon-btn nav-arrow" data-goto-date="'+addDays(dateStr,-1)+'">◀</button>'
+      + '<div class="date-label">'+formatDateJP(dateStr)+(isToday?' 🌟':'')+'</div>'
+      + '<button class="icon-btn nav-arrow" data-goto-date="'+addDays(dateStr,1)+'">▶</button>'
+      + '<button class="btn small ghost" data-goto-date="'+todayStr()+'">今日</button>'
+      + '<input type="date" id="dayDatePicker" value="'+dateStr+'">'
+      + '</div>'
+      + '<div class="layout">'
+      + '<div>'
+      + '<div class="card timeline-card"><div class="washi"></div>'
+      + '<div class="binder-holes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>'
+      + '<h2>📅 '+(isToday?'きょう':'この日')+'のタイムライン'+(isToday?(' <span class="now-badge">'+minToTimeStr(nowMin())+' 現在</span>'):'')+'</h2>'
+      + '<div class="timeline-scroll" id="timelineScrollContainer">'+timelineHtml+'</div></div>'
+      + '<div class="card tomorrow-card"><div class="washi" style="background:repeating-linear-gradient(45deg, var(--blue) 0 6px, #E9F9FF 6px 12px);"></div>'
+      + '<h2>🌙 明日へ回すリスト</h2>'+pushedHtml+'</div>'
+      + '</div>'
+      + '<div>'
+      + '<div class="card"><div class="washi" style="background:repeating-linear-gradient(45deg, var(--lavender) 0 6px, #F3ECFF 6px 12px);"></div>'
+      + '<h2>📝 タスクリスト <button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'" style="margin-left:auto;">＋ついか</button></h2>'
+      + queueHtml + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function renderWeekView(){
+    const start = startOfWeek(state.viewDate);
+    const dates = [0,1,2,3,4,5,6].map(i=>addDays(start,i));
+    dates.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
+    const todayS = todayStr();
+    const cols = dates.map(d=>{
+      const dObj = strToDate(d);
+      const wd = dObj.getDay();
+      const isToday = d===todayS;
+      const dayTasks = state.tasks.filter(t=> t.assignedDate===d && t.scheduledStart!=null).sort((a,b)=>a.scheduledStart-b.scheduledStart);
+      const chips = dayTasks.map(t=>
+        '<div class="wk-chip '+typeBlockClass(t.schedulingType)+'" data-goto-date="'+d+'">'
+        + minToTimeStr(t.scheduledStart)+' '+(t.status==='done'?'✅':t.status==='active'?'▶':t.status==='paused'?'⏸':'')+escapeHtml(t.name)+'</div>').join('')
+        || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>';
+      return '<div class="week-col '+(isToday?'today':'')+'">'
+        + '<div class="week-col-head '+(wd===0?'sun':wd===6?'sat':'')+'" data-goto-date="'+d+'">'+(dObj.getMonth()+1)+'/'+dObj.getDate()+'('+WD[wd]+')</div>'
+        + chips + '</div>';
+    }).join('');
+    return '<div class="day-nav">'
+      + '<button class="icon-btn nav-arrow" data-shift-days="-7">◀</button>'
+      + '<div class="date-label">'+formatShort(start)+' 〜 '+formatShort(addDays(start,6))+'</div>'
+      + '<button class="icon-btn nav-arrow" data-shift-days="7">▶</button>'
+      + '<button class="btn small ghost" data-this-week="1">今週</button>'
+      + '</div>'
+      + '<div class="card"><div class="washi"></div><h2>🗓 週の予定</h2><div class="week-grid">'+cols+'</div></div>';
+  }
+
+  function renderMonthView(){
+    const base = strToDate(state.viewDate);
+    const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+    const firstStr = dateToStr(firstOfMonth);
+    const gridStart = startOfWeek(firstStr);
+    const cells = [];
+    let cur = gridStart;
+    for(let i=0;i<42;i++){ cells.push(cur); cur = addDays(cur,1); }
+    cells.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
+    const monthIdx = base.getMonth();
+    const todayS = todayStr();
+    const weekdayRow = WD.map((w,i)=> '<div style="'+(i===0?'color:#FF6F91':i===6?'color:#4FA8D8':'')+'">'+w+'</div>').join('');
+    const cellsHtml = cells.map(d=>{
+      const dObj = strToDate(d);
+      const other = dObj.getMonth()!==monthIdx;
+      const isToday = d===todayS;
+      const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
+      const dots = dayTasks.slice(0,6).map(t=>'<span class="dot '+t.schedulingType+'"></span>').join('');
+      const hasDeadline = state.tasks.some(t=> t.deadline===d && t.status!=='done');
+      return '<div class="month-cell '+(other?'other-month':'')+' '+(isToday?'today':'')+'" data-goto-date="'+d+'">'
+        + '<div class="month-date">'+dObj.getDate()+(hasDeadline?' 🔖':'')+'</div>'
+        + '<div class="month-dots">'+dots+'</div></div>';
+    }).join('');
+    return '<div class="day-nav">'
+      + '<button class="icon-btn nav-arrow" data-shift-months="-1">◀</button>'
+      + '<div class="date-label">'+formatMonthJP(state.viewDate)+'</div>'
+      + '<button class="icon-btn nav-arrow" data-shift-months="1">▶</button>'
+      + '<button class="btn small ghost" data-this-month="1">今月</button>'
+      + '</div>'
+      + '<div class="card"><div class="washi"></div><h2>🗓 月の予定</h2>'
+      + '<div class="month-weekday-row">'+weekdayRow+'</div>'
+      + '<div class="month-grid">'+cellsHtml+'</div></div>';
+  }
+
+  function renderTodoView(){
+    const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done');
+    const scheduled = state.tasks.filter(t=> t.assignedDate!==null && t.status!=='done');
+    const done = state.tasks.filter(t=> t.status==='done').sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
+
+    function col(title, list, opts){
+      if(list.length===0) return '<div class="todo-col"><h3>'+title+'</h3><div class="empty">なにもないよ</div></div>';
+      return '<div class="todo-col"><h3>'+title+'</h3>'+list.map(t=>taskCardHTML(t,opts)).join('')+'</div>';
+    }
+    return '<div class="card"><div class="washi"></div>'
+      + '## ✅ ToDoリスト <button class="btn small" data-open-task-modal="1" data-default-date="" style="margin-left:auto;">＋ついか</button>'
+      + '<div class="todo-cols">'
+      + col('🌤 予定してない', backlog, {showDate:false, showAssignBtn:true})
+      + col('📌 予定に追加した', scheduled, {showDate:true, showUnassign:true})
+      + col('🎀 終わった', done, {showDate:true})
+      + '</div></div>';
+  }
+
+  function renderRoutineView(){
+    const list = state.routines;
+    const html = list.length===0 ? '<div class="empty">まだルーティンがないよ🔁<br>毎日くりかえすタスクをついかしてみよう！</div>'
+      : list.map(r=>
+        '<div class="task-card"><div class="task-top">'
+        + '<div class="task-name">'+escapeHtml(r.name)+'</div>'
+        + '<span class="badge '+typeBadgeClass(r.schedulingType)+'">'+typeLabel(r.schedulingType)+'</span>'
+        + '</div><div class="task-meta">⌛'+r.duration+'分'+(r.manualStart!=null?('・⏰'+minToTimeStr(r.manualStart)):'')+'</div>'
+        + '<div class="task-actions">'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;"><input type="checkbox" data-action="toggleRoutineActive" data-id="'+r.id+'" '+(r.active?'checked':'')+'> 有効</label>'
+        + '<button class="btn small ghost" data-action="editRoutine" data-id="'+r.id+'">✏️編集</button>'
+        + '<button class="btn small gray" data-action="deleteRoutine" data-id="'+r.id+'">🗑削除</button>'
+        + '</div></div>').join('');
+    return '<div class="card"><div class="washi"></div>'
+      + '<h2>🔁 ルーティン管理 <button class="btn small" data-open-routine-modal="1" style="margin-left:auto;">＋ついか</button></h2>'
+      + '<div class="hint" style="margin-bottom:10px;">ここで登録したタスクは毎日じどうで予定に追加されるよ📅</div>'
+      + html + '</div>';
+  }
+
+  /* ================= main render ================= */
+  function render(){
+    // タイムラインのスクロール位置を保存
+    const scrollContainer = document.getElementById('timelineScrollContainer');
+    const scrollTop = scrollContainer ? scrollContainer.scrollTop : null;
+
+    document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.view===state.currentView));
+    const root = document.getElementById('viewRoot');
+    if(state.currentView==='day') root.innerHTML = renderDayView();
+    else if(state.currentView==='week') root.innerHTML = renderWeekView();
+    else if(state.currentView==='month') root.innerHTML = renderMonthView();
+    else if(state.currentView==='todo') root.innerHTML = renderTodoView();
+    else if(state.currentView==='routine') root.innerHTML = renderRoutineView();
+
+    // スクロール位置を復元
+    if(scrollTop !== null && state.currentView==='day'){
+      const newScrollContainer = document.getElementById('timelineScrollContainer');
+      if(newScrollContainer) newScrollContainer.scrollTop = scrollTop;
+    }
+
+    setupDragAndDrop();
+    syncData();
+  }
+
+  /* ================= Drag and Drop ================= */
+  function setupDragAndDrop(){
+    const container = document.getElementById('timelineScrollContainer');
+    if(!container) return;
+    const inner = container.querySelector('.timeline-inner');
+    if(!inner) return;
+
+    let draggedTaskId = null;
+
+    inner.addEventListener('dragstart', (e)=>{
+      const block = e.target.closest('.task-block');
+      if(block){
+        draggedTaskId = block.dataset.id;
+        e.dataTransfer.setData('text/plain', draggedTaskId);
+      }
+    });
+
+    inner.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+    });
+
+    inner.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      if(!draggedTaskId) return;
+
+      const rect = inner.getBoundingClientRect();
+      const offsetY = e.clientY - rect.top;
+      const startHour = parseInt(inner.dataset.startHour, 10) || 8;
+      
+      let droppedMin = (offsetY / PX_PER_MIN) + (startHour * 60);
+      droppedMin = Math.round(droppedMin / 5) * 5; // 5分単位にスナップ
+
+      const t = state.tasks.find(x => x.id === draggedTaskId);
+      if(t){
+        t.manualStart = droppedMin;
+        t.scheduledStart = droppedMin;
+        t.scheduledEnd = droppedMin + t.duration;
+        render();
+        showToast('「' + t.name + '」の時間を ' + minToTimeStr(droppedMin) + ' に変更したよ✨');
+      }
+      draggedTaskId = null;
+    });
+  }
+
+  /* ================= task modal ================= */
+  let editingTaskId = null;
+  function openTaskModal(mode, task, defaults){
+    editingTaskId = mode==='edit' ? task.id : null;
+    document.getElementById('taskModalTitle').textContent = mode==='edit' ? '✏️ タスクをへんしゅう' : '✏️ タスクをついか';
+    document.getElementById('tmName').value = task ? task.name : '';
+    document.getElementById('tmDuration').value = task ? task.duration : 30;
+    const type = task ? task.schedulingType : ((defaults && defaults.type) || 'flexible');
+    document.querySelector('input[name=tmType][value="'+type+'"]').checked = true;
+    
+    document.getElementById('tmStartTime').value = (task && task.manualStart != null) ? minToTimeStr(task.manualStart) : '';
+    document.getElementById('tmDate').value = task ? (task.assignedDate || '') : ((defaults && defaults.date) || '');
+    document.getElementById('tmDeadline').value = (task && task.deadline) ? task.deadline : '';
+    document.getElementById('taskModal').classList.add('show');
+  }
+  document.getElementById('tmCancel').addEventListener('click', ()=> document.getElementById('taskModal').classList.remove('show'));
+  document.getElementById('taskModal').addEventListener('click', (e)=>{ if(e.target.id==='taskModal') e.currentTarget.classList.remove('show'); });
+  document.getElementById('tmSave').addEventListener('click', ()=>{
+    const name = document.getElementById('tmName').value.trim();
+    const duration = parseInt(document.getElementById('tmDuration').value,10);
+    const type = document.querySelector('input[name=tmType]:checked').value;
+    const dateVal = document.getElementById('tmDate').value;
+    const deadlineVal = document.getElementById('tmDeadline').value;
+    const startVal = document.getElementById('tmStartTime').value;
+    if(!name || !duration || duration<=0){ showToast('タスクめいと時間を入力してね'); return; }
+    
+    const manualStart = startVal ? timeStrToMin(startVal) : null;
+
+    if(editingTaskId){
+      const t = state.tasks.find(x=>x.id===editingTaskId);
+      t.name=name; t.duration=duration; t.schedulingType=type; 
+      t.manualStart = manualStart;
+      t.assignedDate = dateVal || null; t.deadline = deadlineVal || null;
+      if(t.status==='planned'){ t.scheduledStart=null; t.scheduledEnd=null; }
+    } else {
+      const newTask = {
+        id: uid(), name, duration, schedulingType: type, manualStart,
+        assignedDate: dateVal || null, deadline: deadlineVal || null,
+        routineId: null, status: 'planned',
+        scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
+        actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
+        order: Date.now()+Math.random(), pushedFromDate: null,
+        notifiedStart: false, notifiedEnd: false
+      };
+      state.tasks.push(newTask);
+      postToDiscord('📝 [' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
+    }
+    document.getElementById('taskModal').classList.remove('show');
+    render();
+    showToast('ほぞんしたよ💾');
+  });
+
+  /* ================= routine modal ================= */
+  let editingRoutineId = null;
+  function openRoutineModal(mode, routine){
+    editingRoutineId = mode==='edit' ? routine.id : null;
+    document.getElementById('routineModalTitle').textContent = mode==='edit' ? '✏️ ルーティンをへんしゅう' : '🔁 ルーティンをついか';
+    document.getElementById('rmName').value = routine ? routine.name : '';
+    document.getElementById('rmDuration').value = routine ? routine.duration : 15;
+    const type = routine ? routine.schedulingType : 'flexible';
+    document.querySelector('input[name=rmType][value="'+type+'"]').checked = true;
+    document.getElementById('rmStartTime').value = (routine && routine.manualStart!=null) ? minToTimeStr(routine.manualStart) : '';
+    document.getElementById('routineModal').classList.add('show');
+  }
+  document.getElementById('rmCancel').addEventListener('click', ()=> document.getElementById('routineModal').classList.remove('show'));
+  document.getElementById('routineModal').addEventListener('click', (e)=>{ if(e.target.id==='routineModal') e.currentTarget.classList.remove('show'); });
+  document.getElementById('rmSave').addEventListener('click', ()=>{
+    const name = document.getElementById('rmName').value.trim();
+    const duration = parseInt(document.getElementById('rmDuration').value,10);
+    const type = document.querySelector('input[name=rmType]:checked').value;
+    const startVal = document.getElementById('rmStartTime').value;
+    if(!name || !duration || duration<=0){ showToast('タスクめいと時間を入力してね'); return; }
+    
+    const manualStart = startVal ? timeStrToMin(startVal) : null;
+
+    if(editingRoutineId){
+      const r = state.routines.find(x=>x.id===editingRoutineId);
+      r.name=name; r.duration=duration; r.schedulingType=type; r.manualStart=manualStart;
+    } else {
+      state.routines.push({ id: uid(), name, duration, schedulingType: type, manualStart, active: true });
+    }
+    document.getElementById('routineModal').classList.remove('show');
+    render();
+    showToast('ルーティンをほぞんしたよ💾');
+  });
+
+  /* ================= task actions ================= */
+  function handleTaskAction(action, id){
+    if(action==='toggleRoutineActive'){
+      const r = state.routines.find(x=>x.id===id); if(r){ r.active = !r.active; render(); } return;
+    }
+    if(action==='deleteRoutine'){
+      if(!confirm('このルーティンを削除する？（過去の記録は残るよ）')) return;
+      state.routines = state.routines.filter(x=>x.id!==id); render(); return;
+    }
+    if(action==='editRoutine'){ openRoutineModal('edit', state.routines.find(x=>x.id===id)); return; }
+    if(action==='edit'){ openTaskModal('edit', state.tasks.find(x=>x.id===id)); return; }
+
+    const t = state.tasks.find(x=>x.id===id);
+    if(!t) return;
+    switch(action){
+      case 'delete':
+        if(!confirm('このタスクを削除する？')) return;
+        state.tasks = state.tasks.filter(x=>x.id!==id);
+        break;
+      case 'start':
+        if(state.tasks.some(x=> x.assignedDate===todayStr() && (x.status==='active' || x.status==='paused'))){
+          showToast('今のタスクを終わらせてね'); return;
+        }
+        t.status='active';
+        t.plannedStart=t.scheduledStart; t.plannedEnd=t.scheduledEnd;
+        t.actualStartTs=Date.now();
+        t.scheduledStart=nowMin(); t.scheduledEnd=t.scheduledStart+t.duration;
+        postToDiscord('▶ [' + t.name + '] を実際に開始したよ！ファイト🔥');
+        showToast('「'+t.name+'」スタート！ファイト🔥');
+        break;
+      case 'pause':
+        t.status='paused'; t.pausedAt=Date.now();
+        showToast('一時停止したよ⏸');
+        break;
+      case 'resume':
+        t.totalPausedMs += (Date.now()-t.pausedAt); t.pausedAt=null; t.status='active';
+        showToast('再開！がんばれ🔥');
+        break;
+      case 'delay15': case 'delay30':
+        { const add = action==='delay15'?15:30; t.duration += add; t.scheduledEnd = t.scheduledStart+t.duration; showToast('⏰'+add+'分えんちょう！'); }
+        break;
+      case 'done':
+        {
+          t.status='done'; t.actualEndTs=Date.now();
+          if(t.plannedStart==null){ t.plannedStart=t.scheduledStart; t.plannedEnd=t.scheduledStart+t.duration; }
+          t.scheduledEnd = Math.max(t.scheduledStart+1, nowMin());
+          const actualMin = Math.max(0, Math.round((t.actualEndTs-(t.actualStartTs||t.actualEndTs)-t.totalPausedMs)/60000));
+          postToDiscord('💖 [' + t.name + '] を実際に完了したよ！えらい✨（作業時間：約' + actualMin + '分）');
+          showToast('「'+t.name+'」かんりょう！おつかれさま💖');
+        }
+        break;
+      case 'reopen':
+        t.status='planned'; t.actualStartTs=null; t.actualEndTs=null; t.pausedAt=null; t.totalPausedMs=0;
+        t.scheduledStart=null; t.scheduledEnd=null;
+        showToast('タスクをもどしたよ↩');
+        break;
+      case 'assignToday':
+        t.assignedDate = todayStr(); t.scheduledStart=null; t.scheduledEnd=null;
+        showToast('今日の予定にいれたよ🌸');
+        break;
+      case 'unassign':
+        t.assignedDate = null; t.scheduledStart=null; t.scheduledEnd=null;
+        showToast('ToDoにもどしたよ');
+        break;
+    }
+    render();
+  }
+
+  /* ================= auth modal ================= */
+  const authModal = document.getElementById('authModal');
+  document.getElementById('openAuth').addEventListener('click', ()=> authModal.classList.add('show'));
+  document.getElementById('closeAuth').addEventListener('click', ()=> authModal.classList.remove('show'));
+  authModal.addEventListener('click', (e)=>{ if(e.target===authModal) authModal.classList.remove('show'); });
+
+  document.getElementById('authRegisterBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    const pass = document.getElementById('authPassword').value.trim();
+    if(!email || !pass){ showToast('メールアドレスとパスワードを入力してね'); return; }
+    try{
+      await window.fbMethods.createUserWithEmailAndPassword(window.fbAuth, email, pass);
+      authModal.classList.remove('show');
+      showToast('アカウントを作成したよ✨');
+    }catch(e){
+      showToast('登録失敗: ' + e.message);
+    }
+  });
+
+  document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    const pass = document.getElementById('authPassword').value.trim();
+    if(!email || !pass){ showToast('メールアドレスとパスワードを入力してね'); return; }
+    try{
+      await window.fbMethods.signInWithEmailAndPassword(window.fbAuth, email, pass);
+      authModal.classList.remove('show');
+      showToast('ログインしたよ✨');
+    }catch(e){
+      showToast('ログイン失敗: ' + e.message);
+    }
+  });
+
+  document.getElementById('authLogoutBtn').addEventListener('click', async ()=>{
+    await window.fbMethods.signOut(window.fbAuth);
+    authModal.classList.remove('show');
+    showToast('ログアウトしたよ');
+  });
+
+  /* ================= global click / change delegation ================= */
+  document.addEventListener('click', function(e){
+    const tab = e.target.closest('.tab-btn');
+    if(tab){ state.currentView = tab.dataset.view; render(); return; }
+
+    const gotoBtn = e.target.closest('[data-goto-date]');
+    if(gotoBtn){ state.viewDate = gotoBtn.dataset.gotoDate; state.currentView='day'; render(); return; }
+
+    const shiftDaysBtn = e.target.closest('[data-shift-days]');
+    if(shiftDaysBtn){ state.viewDate = addDays(state.viewDate, parseInt(shiftDaysBtn.dataset.shiftDays,10)); render(); return; }
+
+    const shiftMonthsBtn = e.target.closest('[data-shift-months]');
+    if(shiftMonthsBtn){ state.viewDate = shiftMonth(state.viewDate, parseInt(shiftMonthsBtn.dataset.shiftMonths,10)); render(); return; }
+
+    const thisWeekBtn = e.target.closest('[data-this-week]');
+    if(thisWeekBtn){ state.viewDate = todayStr(); render(); return; }
+
+    const thisMonthBtn = e.target.closest('[data-this-month]');
+    if(thisMonthBtn){ state.viewDate = todayStr(); render(); return; }
+
+    const openTaskBtn = e.target.closest('[data-open-task-modal]');
+    if(openTaskBtn){ openTaskModal('create', null, {date: openTaskBtn.dataset.defaultDate || ''}); return; }
+
+    const openRoutineBtn = e.target.closest('[data-open-routine-modal]');
+    if(openRoutineBtn){ openRoutineModal('create'); return; }
+
+    const actionBtn = e.target.closest('[data-action]');
+    if(actionBtn){ handleTaskAction(actionBtn.dataset.action, actionBtn.dataset.id); return; }
+  });
+
+  document.addEventListener('change', function(e){
+    if(e.target && e.target.id==='dayDatePicker'){ state.viewDate = e.target.value; render(); }
+  });
+
+  /* ================= settings modal ================= */
+  const settingsModal = document.getElementById('settingsModal');
+  function openSettingsModal(){
+    document.getElementById('setDayStart').value = state.settings.dayStart;
+    document.getElementById('setDayEnd').value = state.settings.dayEnd;
+    document.getElementById('setWebhook').value = state.settings.webhook;
+    settingsModal.classList.add('show');
+  }
+  document.getElementById('openSettings').addEventListener('click', openSettingsModal);
+  document.getElementById('closeSettings').addEventListener('click', ()=> settingsModal.classList.remove('show'));
+  settingsModal.addEventListener('click', (e)=>{ if(e.target===settingsModal) settingsModal.classList.remove('show'); });
+  document.getElementById('saveSettings').addEventListener('click', ()=>{
+    state.settings.dayStart = document.getElementById('setDayStart').value || '08:00';
+    state.settings.dayEnd = document.getElementById('setDayEnd').value || '22:00';
+    state.settings.webhook = document.getElementById('setWebhook').value.trim();
+    settingsModal.classList.remove('show');
+    render();
+    showToast('せっていをほぞんしたよ💾');
+  });
+  document.getElementById('testWebhook').addEventListener('click', ()=>{
+    const url = document.getElementById('setWebhook').value.trim();
+    if(!url){ showToast('Webhook URLを入力してね'); return; }
+    state.settings.webhook = url;
+    postToDiscord('💖 テストつうちだよ！これが届いたらせってい成功✨');
+  });
+
+  /* ================= init ================= */
+  state.viewDate = todayStr();
+  setInterval(()=>{ 
+    checkTimeNotifications();
+    if(state.currentView==='day' || state.currentView==='todo') render(); 
+  }, 10000);
+  render();
+
+})();
+</script>
+</body>
+</html>
