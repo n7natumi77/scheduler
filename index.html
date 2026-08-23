@@ -150,6 +150,8 @@
   .memo-line{font-size:11px;color:var(--text-soft);margin-top:5px;padding:5px 8px;background:#FFF7FB;border-radius:8px;}
   .money-line{font-size:11px;font-weight:800;margin-top:5px;color:#6B8E5A;}
   .money-line.expense{color:#C86A6A;}
+  .money-mini-btn{font:inherit;font-size:10px;line-height:1;background:#fff;border:1px solid var(--pink);color:var(--pink-dark);border-radius:7px;padding:2px 4px;cursor:pointer;}
+  .money-mini-btn:hover{background:var(--pink);color:#fff;}
   .finance-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media(max-width:760px){.finance-grid{grid-template-columns:1fr;}}
   .money-summary{background:#fff;border:2px solid var(--pink);border-radius:16px;padding:14px;}
@@ -514,7 +516,9 @@
     currentView: 'day',
     viewDate: null,
     currentUser: null,
-    unsubscribeFirestore: null
+    unsubscribeFirestore: null,
+    moneyTargetId: null,
+    moneyEditingId: null
   };
 
   state.tasks = state.tasks.map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
@@ -590,7 +594,7 @@
 
             // Firestoreを正としてstateへ反映する。ここでは絶対に保存し直さない。
             state.tasks = (Array.isArray(data.tasks) ? data.tasks : []).map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
-            state.routines = Array.isArray(data.routines) ? data.routines : [];
+            state.routines = (Array.isArray(data.routines) ? data.routines : []).map(r=>Object.assign({excludedDates:[]}, r));
             state.settings = Object.assign(
               {dayStart:'08:00', dayEnd:'22:00', webhook:''},
               data.settings || {}
@@ -635,7 +639,7 @@
         statusEl.style.display = 'none';
         authLogoutBtn.style.display = 'none';
         state.tasks = loadLocalTasks().map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
-        state.routines = loadLocalRoutines();
+        state.routines = loadLocalRoutines().map(r=>Object.assign({excludedDates:[]}, r));
         state.settings = loadLocalSettings();
         state.budgets = loadLocalBudgets();
         render();
@@ -683,6 +687,7 @@
     let changed = false;
     state.routines.forEach(r=>{
       if(!r.active) return;
+      if(Array.isArray(r.excludedDates) && r.excludedDates.includes(dateStr)) return;
       const exists = state.tasks.some(t=> t.routineId===r.id && t.assignedDate===dateStr);
       if(!exists){
         changed = true;
@@ -852,8 +857,8 @@
       if(opts.showAssignBtn && !t.assignedDate){
         actionsHtml += '<button class="btn small blue" data-action="assignToday" data-id="'+t.id+'">📅今日にいれる</button>';
       }
-      if(opts.showUnassign && t.assignedDate){
-        actionsHtml += '<button class="btn small ghost" data-action="unassign" data-id="'+t.id+'">外す</button>';
+      if((opts.showUnassign || opts.allowUnassign) && t.assignedDate){
+        actionsHtml += '<button class="btn small ghost" data-action="unassign" data-id="'+t.id+'">📅外す</button>';
       }
     } else if(t.status==='done'){
       actionsHtml = '<button class="btn small ghost" data-action="reopen" data-id="'+t.id+'">↩やりなおす</button>';
@@ -868,8 +873,8 @@
       + '</div>'
       + '<div class="task-meta">'+timeInfo+'</div>'
       + (t.memo ? '<div class="memo-line">📝 '+escapeHtml(t.memo)+'</div>' : '')
-      + (Array.isArray(t.money) && t.money.length ? '<div class="money-line '+(t.money.some(m=>m.type==='expense')?'expense':'')+'">💰 '+t.money.map(m=>(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円').join(' / ')+'</div>' : '')
-      + '<div class="task-actions">'+actionsHtml+timerHtml+'<button class="btn small ghost" data-action="money" data-id="'+t.id+'">💰</button></div>'
+      + (Array.isArray(t.money) && t.money.length ? '<div class="money-line '+(t.money.some(m=>m.type==='expense')?'expense':'')+'">💰 '+t.money.map(m=>'<span style="display:inline-flex;align-items:center;gap:3px;margin-right:5px;">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円 <button class="money-mini-btn" data-money-edit="'+t.id+'" data-money-entry="'+m.id+'" title="この収支を編集">✏️</button><button class="money-mini-btn" data-money-delete="'+t.id+'" data-money-entry="'+m.id+'" title="この収支を削除">×</button></span>').join('')+'</div>' : '')
+      + '<div class="task-actions">'+actionsHtml+timerHtml+'<button class="btn small ghost" data-money-open="'+t.id+'">💰</button></div>'
       + '</div>';
   }
 
@@ -995,7 +1000,7 @@
       if(r!==0) return r;
       return (a.scheduledStart==null?9999:a.scheduledStart) - (b.scheduledStart==null?9999:b.scheduledStart);
     });
-    const queueHtml = queueTasks.length ? queueTasks.map(t=>taskCardHTML(t,{showDate:false})).join('')
+    const queueHtml = queueTasks.length ? queueTasks.map(t=>taskCardHTML(t,{showDate:false,allowUnassign:true})).join('')
       : '<div class="empty">タスクがまだないよ〜💤<br>「＋ついか」から追加してね！</div>';
 
     const pushedList = state.tasks.filter(t=> t.pushedFromDate===dateStr && t.assignedDate===addDays(dateStr,1) && t.status!=='done');
@@ -1161,20 +1166,49 @@
       return '<div class="money-summary"><div style="display:flex;justify-content:space-between;gap:8px;"><b>🎯 '+(b.period==='week'?'今週':'今月')+(b.category?'・'+escapeHtml(b.category):'・全体')+'</b><button class="btn small gray" data-budget-delete="'+b.id+'">🗑</button></div><div class="money-row"><span>使用</span><b>'+ex.toLocaleString()+' / '+Number(b.amount).toLocaleString()+'円</b></div><div class="budget-bar"><div class="budget-fill '+(over?'over':'')+'" style="width:'+pct+'%"></div></div><div class="hint">'+(over?'予算オーバー💦':'残り '+Math.max(0,b.amount-ex).toLocaleString()+'円')+'</div></div>';
     }
     const tx=allMoney().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-    const txHtml=tx.slice(0,30).map(m=>'<div class="money-row"><span>'+escapeHtml(m.date||'')+'・'+escapeHtml(m.taskName||'')+'<br><small>'+escapeHtml(m.category||'その他')+'</small></span><b style="color:'+(m.type==='expense'?'#C86A6A':'#6B8E5A')+'">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円</b></div>').join('') || '<div class="empty">まだ収支がないよ。出来事の💰から追加できるよ。</div>';
+    const txHtml=tx.slice(0,30).map(m=>'<div class="money-row"><span>'+escapeHtml(m.date||'')+'・'+escapeHtml(m.taskName||'')+'<br><small>'+escapeHtml(m.category||'その他')+'</small></span><span style="display:flex;align-items:center;gap:6px;"><b style="color:'+(m.type==='expense'?'#C86A6A':'#6B8E5A')+'">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円</b><button class="money-mini-btn" data-money-edit="'+m.taskId+'" data-money-entry="'+m.id+'">✏️</button><button class="money-mini-btn" data-money-delete="'+m.taskId+'" data-money-entry="'+m.id+'">×</button></span></div>').join('') || '<div class="empty">まだ収支がないよ。出来事の💰から追加できるよ。</div>';
     return '<div class="day-nav"><div class="date-label">💰 お金</div><button class="btn small" data-open-budget="1" style="margin-left:auto;">🎯 予算を設定</button></div>'
       + '<div class="finance-grid"><div class="money-summary"><h2 style="margin-top:0">📅 今月</h2><div class="money-big">'+(monthIncome-monthExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+monthIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+monthExpense.toLocaleString()+'円</b></div></div>'
       + '<div class="money-summary"><h2 style="margin-top:0">🗓 今週</h2><div class="money-big">'+(weekIncome-weekExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+weekIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+weekExpense.toLocaleString()+'円</b></div></div></div>'
       + '<div class="card"><div class="washi"></div><h2>🎯 予算</h2><div class="finance-grid">'+(budgets.map(budgetCard).join('')||'<div class="empty">まだ予算がないよ。週・月ごとに設定できるよ。</div>')+'</div></div>'
       + '<div class="card"><div class="washi"></div><h2>💳 最近の収支</h2>'+txHtml+'</div>';
   }
-  function openMoneyModal(id){
+  function openMoneyModal(id, moneyId){
     const t=state.tasks.find(x=>x.id===id); if(!t)return;
-    state.moneyTargetId=id; document.getElementById('moneyTargetHint').textContent='「'+t.name+'」に紐づけて記録します。必要なときだけ追加してね。';
-    document.getElementById('moneyAmount').value=''; document.getElementById('moneyCategory').value=''; document.getElementById('moneyDate').value=t.assignedDate||todayStr();
+    if(!Array.isArray(t.money)) t.money=[];
+    const entry = moneyId ? t.money.find(m=>m.id===moneyId) : null;
+    state.moneyTargetId=id;
+    state.moneyEditingId=entry ? entry.id : null;
+    document.querySelector('#moneyModal h2').textContent = entry ? '💰 お金の記録を編集' : '💰 お金を記録';
+    document.getElementById('moneyTargetHint').textContent='「'+t.name+'」に紐づけて記録します。'+(entry?'内容を修正できます。':'必要なときだけ追加してね。');
+    document.getElementById('moneyAmount').value=entry ? entry.amount : '';
+    document.getElementById('moneyCategory').value=entry ? (entry.category||'') : '';
+    document.getElementById('moneyDate').value=entry ? (entry.date||t.assignedDate||todayStr()) : (t.assignedDate||todayStr());
+    const radio=document.querySelector('input[name=moneyType][value="'+(entry ? entry.type : 'expense')+'"]'); if(radio) radio.checked=true;
+    document.getElementById('moneySave').textContent=entry ? '💾 変更を保存' : '💾 記録';
     document.getElementById('moneyModal').classList.add('show');
   }
-  function renderRoutineView(){
+  function closeMoneyModal(){
+    document.getElementById('moneyModal').classList.remove('show');
+    state.moneyTargetId=null; state.moneyEditingId=null;
+  }
+  function moneyLabel(m){ return (m.type==='expense'?'支出':'収入')+' '+Number(m.amount||0).toLocaleString()+'円'; }
+  async function notifyMoneyChange(action, t, m){
+    const sign=m.type==='expense'?'-':'+';
+    await postToDiscord('💰 ['+t.name+'] のお金を'+action+'：'+sign+Number(m.amount||0).toLocaleString()+'円（'+(m.category||'その他')+'、'+(m.date||todayStr())+'）');
+  }
+  async function deleteMoneyEntry(taskId, moneyId){
+    const t=state.tasks.find(x=>x.id===taskId); if(!t || !Array.isArray(t.money)) return;
+    const idx=t.money.findIndex(m=>m.id===moneyId); if(idx<0)return;
+    const m=t.money[idx];
+    if(!confirm('この'+(m.type==='expense'?'支出':'収入')+'を削除する？')) return;
+    t.money.splice(idx,1);
+    await syncData();
+    await notifyMoneyChange('削除した', t, m);
+    render();
+    showToast('お金の記録を削除したよ💰');
+  }
+function renderRoutineView(){
     const list = state.routines;
     const html = list.length===0 ? '<div class="empty">まだルーティンがないよ🔁<br>毎日くりかえすタスクをついかしてみよう！</div>'
       : list.map(r=>
@@ -1329,7 +1363,9 @@
         if(dateVal && manualStart!=null){ rt.actualStartTs=new Date(dateVal+'T'+minToTimeStr(manualStart)+':00').getTime(); rt.actualEndTs=rt.actualStartTs+duration*60000; rt.scheduledStart=manualStart; rt.scheduledEnd=manualStart+duration; }
         else { rt.actualStartTs=Date.now(); rt.actualEndTs=rt.actualStartTs+duration*60000; }
       }
-      postToDiscord('📝 [' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
+      if(kind !== 'record'){
+        postToDiscord((kind==='event'?'📅 ':'📝 ') + '[' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
+      }
     }
     document.getElementById('taskModal').classList.remove('show');
     await syncData();
@@ -1372,7 +1408,7 @@
       const r = state.routines.find(x=>x.id===editingRoutineId);
       r.name=name; r.duration=duration; r.schedulingType=type; r.manualStart=manualStart;
     } else {
-      state.routines.push({ id: uid(), name, duration, schedulingType: type, manualStart, active: true });
+      state.routines.push({ id: uid(), name, duration, schedulingType: type, manualStart, active: true, excludedDates: [] });
     }
     document.getElementById('routineModal').classList.remove('show');
     await syncData();
@@ -1417,6 +1453,13 @@
     switch(action){
       case 'delete':
         if(!confirm('このタスクを削除する？')) return;
+        if(t.routineId && t.assignedDate){
+          const r=state.routines.find(x=>x.id===t.routineId);
+          if(r){
+            if(!Array.isArray(r.excludedDates)) r.excludedDates=[];
+            if(!r.excludedDates.includes(t.assignedDate)) r.excludedDates.push(t.assignedDate);
+          }
+        }
         state.tasks = state.tasks.filter(x=>x.id!==id);
         break;
 
@@ -1496,10 +1539,20 @@
         break;
 
       case 'unassign':
-        t.assignedDate=null;
-        t.scheduledStart=null;
-        t.scheduledEnd=null;
-        showToast('ToDoにもどしたよ');
+        if(t.routineId && t.assignedDate){
+          const r=state.routines.find(x=>x.id===t.routineId);
+          if(r){
+            if(!Array.isArray(r.excludedDates)) r.excludedDates=[];
+            if(!r.excludedDates.includes(t.assignedDate)) r.excludedDates.push(t.assignedDate);
+          }
+          state.tasks = state.tasks.filter(x=>x.id!==id);
+          showToast('この日のルーティンを予定から外したよ');
+        }else{
+          t.assignedDate=null;
+          t.scheduledStart=null;
+          t.scheduledEnd=null;
+          showToast('ToDoにもどしたよ');
+        }
         break;
     }
 
@@ -1546,13 +1599,26 @@
   });
 
 
-  document.getElementById('moneyCancel').addEventListener('click',()=>document.getElementById('moneyModal').classList.remove('show'));
+  document.getElementById('moneyCancel').addEventListener('click',closeMoneyModal);
+  document.getElementById('moneyModal').addEventListener('click',(e)=>{if(e.target.id==='moneyModal') closeMoneyModal();});
   document.getElementById('moneySave').addEventListener('click',async()=>{
     const t=state.tasks.find(x=>x.id===state.moneyTargetId); const amount=Number(document.getElementById('moneyAmount').value);
     if(!t || !amount || amount<0){showToast('金額を入力してね');return;}
     if(!Array.isArray(t.money)) t.money=[];
-    t.money.push({id:uid(),type:document.querySelector('input[name=moneyType]:checked').value,amount,category:document.getElementById('moneyCategory').value.trim()||'その他',date:document.getElementById('moneyDate').value||todayStr()});
-    document.getElementById('moneyModal').classList.remove('show'); await syncData(); render(); showToast('お金の記録を追加したよ💰');
+    const type=document.querySelector('input[name=moneyType]:checked').value;
+    const category=document.getElementById('moneyCategory').value.trim()||'その他';
+    const date=document.getElementById('moneyDate').value||todayStr();
+    if(state.moneyEditingId){
+      const m=t.money.find(x=>x.id===state.moneyEditingId);
+      if(!m){showToast('その収支が見つからないよ');return;}
+      m.type=type; m.amount=amount; m.category=category; m.date=date;
+      const changed=Object.assign({},m);
+      closeMoneyModal(); await syncData(); await notifyMoneyChange('変更した',t,changed); render(); showToast('お金の記録を変更したよ💰');
+    }else{
+      const m={id:uid(),type,amount,category,date};
+      t.money.push(m);
+      closeMoneyModal(); await syncData(); await notifyMoneyChange('記録した',t,m); render(); showToast('お金の記録を追加したよ💰');
+    }
   });
   document.getElementById('budgetCancel').addEventListener('click',()=>document.getElementById('budgetModal').classList.remove('show'));
   document.getElementById('budgetSave').addEventListener('click',async()=>{
@@ -1595,6 +1661,12 @@
     const delBudgetBtn = e.target.closest('[data-budget-delete]');
     if(delBudgetBtn){ state.budgets=state.budgets.filter(b=>b.id!==delBudgetBtn.dataset.budgetDelete); syncData(); render(); return; }
 
+    const moneyEditBtn = e.target.closest('[data-money-edit]');
+    if(moneyEditBtn){ e.stopPropagation(); openMoneyModal(moneyEditBtn.dataset.moneyEdit, moneyEditBtn.dataset.moneyEntry); return; }
+    const moneyDeleteBtn = e.target.closest('[data-money-delete]');
+    if(moneyDeleteBtn){ e.stopPropagation(); deleteMoneyEntry(moneyDeleteBtn.dataset.moneyDelete, moneyDeleteBtn.dataset.moneyEntry); return; }
+    const moneyOpenBtn = e.target.closest('[data-money-open]');
+    if(moneyOpenBtn){ e.stopPropagation(); openMoneyModal(moneyOpenBtn.dataset.moneyOpen); return; }
     const actionBtn = e.target.closest('[data-action]');
     if(actionBtn){ handleTaskAction(actionBtn.dataset.action, actionBtn.dataset.id); return; }
   });
