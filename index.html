@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>きらきら✨スタディプランナー</title>
+<title>Liflow — 時間と出来事の記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Yomogi&family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -145,7 +145,20 @@
     width:100%; border:2px solid var(--pink); background:#fff; border-radius:12px; padding:9px 12px;
     font-family:inherit; font-size:14px; color:var(--text); outline:none;
   }
-  .field input:focus, .field select:focus{border-color:var(--pink-dark);}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--pink-dark);}
+  .field textarea{width:100%;border:2px solid var(--pink);background:#fff;border-radius:12px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--text);outline:none;resize:vertical;}
+  .memo-line{font-size:11px;color:var(--text-soft);margin-top:5px;padding:5px 8px;background:#FFF7FB;border-radius:8px;}
+  .money-line{font-size:11px;font-weight:800;margin-top:5px;color:#6B8E5A;}
+  .money-line.expense{color:#C86A6A;}
+  .finance-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:760px){.finance-grid{grid-template-columns:1fr;}}
+  .money-summary{background:#fff;border:2px solid var(--pink);border-radius:16px;padding:14px;}
+  .money-big{font-size:24px;font-weight:800;color:var(--pink-dark);}
+  .money-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--pink);font-size:12px;}
+  .money-row:last-child{border-bottom:none;}
+  .budget-bar{height:10px;background:#f4edf1;border-radius:10px;overflow:hidden;margin:7px 0;}
+  .budget-fill{height:100%;background:var(--blue-deep);border-radius:10px;}
+  .budget-fill.over{background:#D66;}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .type-choice{display:flex; gap:6px; flex-wrap:wrap;}
   .type-choice label{
@@ -260,8 +273,8 @@
     <div class="title-wrap">
       <span class="charm">💗</span>
       <div>
-        <h1>きらきら<span>♪</span>スタディプランナー</h1>
-        <div class="subtitle">今日もえらい！がんばったらDiscordにおしらせするよ✨</div>
+        <h1>Life<span>flow</span> ✨</h1>
+        <div class="subtitle">予定・したこと・お金を、あとから振り返れるように。</div>
       </div>
     </div>
     <div class="header-actions">
@@ -277,6 +290,7 @@
     <button class="tab-btn" data-view="month">🗓 月</button>
     <button class="tab-btn" data-view="todo">✅ ToDo</button>
     <button class="tab-btn" data-view="routine">🔁 ルーティン</button>
+    <button class="tab-btn" data-view="finance">💰 お金</button>
   </nav>
 
   <div id="viewRoot"></div>
@@ -330,7 +344,16 @@
 <div class="modal-bg" id="taskModal">
   <div class="modal">
     <h2 id="taskModalTitle">✏️ タスクをついか</h2>
-    <div class="field"><label>タスクめい</label><input type="text" id="tmName" placeholder="例）すうがくの宿題"></div>
+    <div class="field"><label>名前</label><input type="text" id="tmName" placeholder="例）レポートを書く / バイト / 映画を見た"></div>
+    <div class="field">
+      <label>これは何？</label>
+      <div class="type-choice">
+        <label><input type="radio" name="tmKind" value="task" checked><span>✅ タスク</span></label>
+        <label><input type="radio" name="tmKind" value="event"><span>📅 予定</span></label>
+        <label><input type="radio" name="tmKind" value="record"><span>📝 記録</span></label>
+      </div>
+      <div class="hint">「記録」は、あとから「この時間は何してた？」を残すためのもの。完了操作はいらないよ。</div>
+    </div>
     <div class="row2">
       <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="0" step="1" value="30"></div>
       <div class="field"><label>開始時刻（任意）</label><input type="time" id="tmStartTime"></div>
@@ -343,6 +366,7 @@
         <label><input type="radio" name="tmType" value="flow"><span>🌙あふれたら翌日</span></label>
       </div>
     </div>
+    <div class="field"><label>一言メモ（任意）</label><textarea id="tmMemo" rows="2" placeholder="今日は忙しかった、ここまでできた、など"></textarea></div>
     <div class="row2">
       <div class="field">
         <label>追加する日</label>
@@ -386,6 +410,28 @@
   </div>
 </div>
 
+
+<!-- money modal -->
+<div class="modal-bg" id="moneyModal">
+  <div class="modal">
+    <h2>💰 お金を記録</h2>
+    <div class="hint" id="moneyTargetHint"></div>
+    <div class="field"><label>種類</label><div class="type-choice"><label><input type="radio" name="moneyType" value="expense" checked><span>💸 支出</span></label><label><input type="radio" name="moneyType" value="income"><span>💰 収入</span></label></div></div>
+    <div class="row2"><div class="field"><label>金額</label><input type="number" id="moneyAmount" min="0" step="1" placeholder="500"></div><div class="field"><label>カテゴリ</label><input type="text" id="moneyCategory" placeholder="食費 / 交通 / 給料"></div></div>
+    <div class="field"><label>発生日</label><input type="date" id="moneyDate"></div>
+    <div class="modal-actions"><button class="btn gray" id="moneyCancel">とじる</button><button class="btn" id="moneySave">💾 記録</button></div>
+  </div>
+</div>
+<!-- budget modal -->
+<div class="modal-bg" id="budgetModal">
+  <div class="modal">
+    <h2>🎯 予算を設定</h2>
+    <div class="field"><label>期間</label><div class="type-choice"><label><input type="radio" name="budgetPeriod" value="week" checked><span>🗓 今週</span></label><label><input type="radio" name="budgetPeriod" value="month"><span>📅 今月</span></label></div></div>
+    <div class="field"><label>カテゴリ（空欄なら全体）</label><input type="text" id="budgetCategory" placeholder="食費 / 趣味 / 全体"></div>
+    <div class="field"><label>予算額</label><input type="number" id="budgetAmount" min="0" step="1" placeholder="10000"></div>
+    <div class="modal-actions"><button class="btn gray" id="budgetCancel">とじる</button><button class="btn" id="budgetSave">💾 予算を保存</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <!-- Firebase SDK (v10 JS Modules) - 混在エラーを修正 -->
@@ -442,6 +488,7 @@
   const LS_TASKS = 'sp_tasks_v2';
   const LS_ROUTINES = 'sp_routines_v1';
   const LS_SETTINGS = 'sp_settings_v2';
+  const LS_BUDGETS = 'sp_budgets_v1';
   const LS_OWNER = 'sp_data_owner_uid_v1';
 
   function loadLocalTasks(){ try{ return JSON.parse(localStorage.getItem(LS_TASKS)) || []; }catch(e){ return []; } }
@@ -456,16 +503,21 @@
     return {dayStart:'08:00', dayEnd:'22:00', webhook:''};
   }
   function saveLocalSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); }
+  function loadLocalBudgets(){ try{ return JSON.parse(localStorage.getItem(LS_BUDGETS)) || []; }catch(e){ return []; } }
+  function saveLocalBudgets(){ localStorage.setItem(LS_BUDGETS, JSON.stringify(state.budgets)); }
 
   const state = {
     tasks: loadLocalTasks(),
     routines: loadLocalRoutines(),
     settings: loadLocalSettings(),
+    budgets: loadLocalBudgets(),
     currentView: 'day',
     viewDate: null,
     currentUser: null,
     unsubscribeFirestore: null
   };
+
+  state.tasks = state.tasks.map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
 
   // Firestoreへの保存を直列化して、短時間に複数回変更しても古い内容で上書きしにくくする。
   let saveQueue = Promise.resolve();
@@ -480,6 +532,7 @@
     saveLocalTasks();
     saveLocalRoutines();
     saveLocalSettings();
+    saveLocalBudgets();
 
     if(!state.currentUser || !window.fbMethods || !firestoreReady){
       return Promise.resolve();
@@ -490,7 +543,8 @@
     const payload = JSON.parse(JSON.stringify({
       tasks: state.tasks,
       routines: state.routines,
-      settings: state.settings
+      settings: state.settings,
+      budgets: state.budgets
     }));
 
     saveQueue = saveQueue.then(()=>
@@ -535,7 +589,7 @@
             const data = docSnap.data();
 
             // Firestoreを正としてstateへ反映する。ここでは絶対に保存し直さない。
-            state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            state.tasks = (Array.isArray(data.tasks) ? data.tasks : []).map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
             state.routines = Array.isArray(data.routines) ? data.routines : [];
             state.settings = Object.assign(
               {dayStart:'08:00', dayEnd:'22:00', webhook:''},
@@ -580,9 +634,10 @@
       }else{
         statusEl.style.display = 'none';
         authLogoutBtn.style.display = 'none';
-        state.tasks = loadLocalTasks();
+        state.tasks = loadLocalTasks().map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
         state.routines = loadLocalRoutines();
         state.settings = loadLocalSettings();
+        state.budgets = loadLocalBudgets();
         render();
       }
     });
@@ -632,14 +687,15 @@
       if(!exists){
         changed = true;
         state.tasks.push({
-          id: uid(), name: r.name, duration: r.duration, schedulingType: r.schedulingType,
+          id: uid(), name: r.name, duration: r.duration, schedulingType: r.schedulingType, kind:'task', memo:'', money:[],
           manualStart: r.manualStart || null, assignedDate: dateStr, deadline: null,
           routineId: r.id, status: 'planned',
           scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
           actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
-          order: Date.now()+Math.random(), pushedFromDate: null,
+          order: Date.now()+Math.random(), pushedFromDate: null, money:[],
           notifiedStart: false, notifiedEnd: false
         });
+        created=true;
       }
     });
     return changed;
@@ -808,10 +864,12 @@
     return '<div class="task-card '+(t.status==='active'?'active-card':'')+'">'
       + '<div class="task-top">'
       + '<div class="task-name">'+(t.status==='done'?'💖 ':'')+(t.routineId?'🔁 ':'')+escapeHtml(t.name)+'</div>'
-      + '<span class="badge '+typeBadgeClass(t.schedulingType)+'">'+typeLabel(t.schedulingType)+'</span>'
+      + '<span class="badge '+(t.kind==='record'?'fixed':t.kind==='event'?'tomorrow':typeBadgeClass(t.schedulingType))+'">'+(t.kind==='record'?'記録':t.kind==='event'?'予定':typeLabel(t.schedulingType))+'</span>'
       + '</div>'
       + '<div class="task-meta">'+timeInfo+'</div>'
-      + '<div class="task-actions">'+actionsHtml+timerHtml+'</div>'
+      + (t.memo ? '<div class="memo-line">📝 '+escapeHtml(t.memo)+'</div>' : '')
+      + (Array.isArray(t.money) && t.money.length ? '<div class="money-line '+(t.money.some(m=>m.type==='expense')?'expense':'')+'">💰 '+t.money.map(m=>(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円').join(' / ')+'</div>' : '')
+      + '<div class="task-actions">'+actionsHtml+timerHtml+'<button class="btn small ghost" data-action="money" data-id="'+t.id+'">💰</button></div>'
       + '</div>';
   }
 
@@ -871,7 +929,7 @@
       const displayDuration = (t.duration === 0) ? 12 : Math.max(t.duration, 10);
       const h = displayDuration * PX_PER_MIN;
       const stateClass = t.status==='active' ? 'is-active' : t.status==='done' ? 'is-done' : '';
-      const mark = t.status==='done' ? '💖 ' : t.status==='paused' ? '⏸ ' : '';
+      const mark = t.kind==='record' ? '📝 ' : t.status==='done' ? '💖 ' : t.status==='paused' ? '⏸ ' : '';
       
       // 横幅と位置の動的計算（56pxオフセットから右側領域を分ける）
       const leftOffset = 56;
@@ -965,7 +1023,7 @@
       + '<div>'
       + '<div class="card"><div class="washi" style="background:repeating-linear-gradient(45deg, var(--lavender) 0 6px, #F3ECFF 6px 12px);"></div>'
       + '<h2>📊 達成チェックリスト（表）</h2>' + tableHtml
-      + '<h2>📝 タスク詳細 <button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'" style="margin-left:auto;">＋ついか</button></h2>'
+      + '<h2>📝 出来事 <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn small ghost" data-open-record-modal="1" data-default-date="'+dateStr+'">＋記録</button><button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'">＋ついか</button></span></h2>'
       + queueHtml + '</div>'
       + '</div>'
       + '</div>';
@@ -1060,7 +1118,7 @@
   }
 
   function renderTodoView(){
-    const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done');
+    const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done' && !t.routineId);
     const scheduled = state.tasks.filter(t=> t.assignedDate!==null && t.status!=='done');
     const done = state.tasks.filter(t=> t.status==='done').sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
 
@@ -1077,6 +1135,45 @@
       + '</div></div>';
   }
 
+
+  /* ================= finance ================= */
+  function periodRange(type, baseDate){
+    const d=strToDate(baseDate||todayStr());
+    if(type==='month') return {start:dateToStr(new Date(d.getFullYear(),d.getMonth(),1)), end:dateToStr(new Date(d.getFullYear(),d.getMonth()+1,0))};
+    return {start:startOfWeek(dateToStr(d)), end:addDays(startOfWeek(dateToStr(d)),6)};
+  }
+  function allMoney(){
+    return state.tasks.flatMap(t=>(Array.isArray(t.money)?t.money:[]).map(m=>Object.assign({},m,{taskId:t.id,taskName:t.name}))).filter(m=>m.amount!=null);
+  }
+  function moneyForRange(range){
+    return allMoney().filter(m=>{const d=m.date || todayStr(); return d>=range.start && d<=range.end;});
+  }
+  function sumMoney(list,type){ return list.filter(m=>m.type===type).reduce((a,m)=>a+Number(m.amount||0),0); }
+  function renderFinanceView(){
+    const month=periodRange('month',state.viewDate), week=periodRange('week',state.viewDate);
+    const mm=moneyForRange(month), wm=moneyForRange(week);
+    const monthIncome=sumMoney(mm,'income'), monthExpense=sumMoney(mm,'expense');
+    const weekIncome=sumMoney(wm,'income'), weekExpense=sumMoney(wm,'expense');
+    const budgets=state.budgets||[];
+    function budgetCard(b){
+      const r=periodRange(b.period,state.viewDate), ex=sumMoney(moneyForRange(r).filter(m=>!b.category || m.category===b.category),'expense');
+      const pct=b.amount?Math.min(100,ex/b.amount*100):0; const over=ex>b.amount;
+      return '<div class="money-summary"><div style="display:flex;justify-content:space-between;gap:8px;"><b>🎯 '+(b.period==='week'?'今週':'今月')+(b.category?'・'+escapeHtml(b.category):'・全体')+'</b><button class="btn small gray" data-budget-delete="'+b.id+'">🗑</button></div><div class="money-row"><span>使用</span><b>'+ex.toLocaleString()+' / '+Number(b.amount).toLocaleString()+'円</b></div><div class="budget-bar"><div class="budget-fill '+(over?'over':'')+'" style="width:'+pct+'%"></div></div><div class="hint">'+(over?'予算オーバー💦':'残り '+Math.max(0,b.amount-ex).toLocaleString()+'円')+'</div></div>';
+    }
+    const tx=allMoney().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const txHtml=tx.slice(0,30).map(m=>'<div class="money-row"><span>'+escapeHtml(m.date||'')+'・'+escapeHtml(m.taskName||'')+'<br><small>'+escapeHtml(m.category||'その他')+'</small></span><b style="color:'+(m.type==='expense'?'#C86A6A':'#6B8E5A')+'">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円</b></div>').join('') || '<div class="empty">まだ収支がないよ。出来事の💰から追加できるよ。</div>';
+    return '<div class="day-nav"><div class="date-label">💰 お金</div><button class="btn small" data-open-budget="1" style="margin-left:auto;">🎯 予算を設定</button></div>'
+      + '<div class="finance-grid"><div class="money-summary"><h2 style="margin-top:0">📅 今月</h2><div class="money-big">'+(monthIncome-monthExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+monthIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+monthExpense.toLocaleString()+'円</b></div></div>'
+      + '<div class="money-summary"><h2 style="margin-top:0">🗓 今週</h2><div class="money-big">'+(weekIncome-weekExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+weekIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+weekExpense.toLocaleString()+'円</b></div></div></div>'
+      + '<div class="card"><div class="washi"></div><h2>🎯 予算</h2><div class="finance-grid">'+(budgets.map(budgetCard).join('')||'<div class="empty">まだ予算がないよ。週・月ごとに設定できるよ。</div>')+'</div></div>'
+      + '<div class="card"><div class="washi"></div><h2>💳 最近の収支</h2>'+txHtml+'</div>';
+  }
+  function openMoneyModal(id){
+    const t=state.tasks.find(x=>x.id===id); if(!t)return;
+    state.moneyTargetId=id; document.getElementById('moneyTargetHint').textContent='「'+t.name+'」に紐づけて記録します。必要なときだけ追加してね。';
+    document.getElementById('moneyAmount').value=''; document.getElementById('moneyCategory').value=''; document.getElementById('moneyDate').value=t.assignedDate||todayStr();
+    document.getElementById('moneyModal').classList.add('show');
+  }
   function renderRoutineView(){
     const list = state.routines;
     const html = list.length===0 ? '<div class="empty">まだルーティンがないよ🔁<br>毎日くりかえすタスクをついかしてみよう！</div>'
@@ -1108,6 +1205,7 @@
     else if(state.currentView==='month') root.innerHTML = renderMonthView();
     else if(state.currentView==='todo') root.innerHTML = renderTodoView();
     else if(state.currentView==='routine') root.innerHTML = renderRoutineView();
+    else if(state.currentView==='finance') root.innerHTML = renderFinanceView();
 
     if(scrollTop !== null && state.currentView==='day'){
       const newScrollContainer = document.getElementById('timelineScrollContainer');
@@ -1177,8 +1275,12 @@
   let editingTaskId = null;
   function openTaskModal(mode, task, defaults){
     editingTaskId = mode==='edit' ? task.id : null;
-    document.getElementById('taskModalTitle').textContent = mode==='edit' ? '✏️ タスクをへんしゅう' : '✏️ タスクをついか';
+    const initialKind = task ? (task.kind || 'task') : ((defaults && defaults.kind) || 'task');
+    document.getElementById('taskModalTitle').textContent = mode==='edit' ? (initialKind==='record' ? '📝 記録をへんしゅう' : initialKind==='event' ? '📅 予定をへんしゅう' : '✏️ タスクをへんしゅう') : (initialKind==='record' ? '📝 記録を追加' : initialKind==='event' ? '📅 予定を追加' : '✏️ タスクを追加');
     document.getElementById('tmName').value = task ? task.name : '';
+    const kind = initialKind;
+    const kindRadio = document.querySelector('input[name=tmKind][value="'+kind+'"]'); if(kindRadio) kindRadio.checked = true;
+    document.getElementById('tmMemo').value = task ? (task.memo || '') : '';
     document.getElementById('tmDuration').value = task ? task.duration : 30;
     const type = task ? task.schedulingType : ((defaults && defaults.type) || 'flexible');
     document.querySelector('input[name=tmType][value="'+type+'"]').checked = true;
@@ -1195,6 +1297,8 @@
     const durationInput = document.getElementById('tmDuration').value;
     const duration = parseInt(durationInput, 10);
     const type = document.querySelector('input[name=tmType]:checked').value;
+    const kind = document.querySelector('input[name=tmKind]:checked').value;
+    const memo = document.getElementById('tmMemo').value.trim();
     const dateVal = document.getElementById('tmDate').value;
     const deadlineVal = document.getElementById('tmDeadline').value;
     const startVal = document.getElementById('tmStartTime').value;
@@ -1204,13 +1308,14 @@
 
     if(editingTaskId){
       const t = state.tasks.find(x=>x.id===editingTaskId);
-      t.name=name; t.duration=duration; t.schedulingType=type; 
+      t.name=name; t.duration=duration; t.schedulingType=type; t.kind=kind; t.memo=memo; 
       t.manualStart = manualStart;
       t.assignedDate = dateVal || null; t.deadline = deadlineVal || null;
+      if(kind==='record'){ t.status='done'; t.actualStartTs = manualStart!=null ? new Date(dateVal+'T'+minToTimeStr(manualStart)+':00').getTime() : Date.now(); t.actualEndTs = t.actualStartTs + duration*60000; t.scheduledStart=manualStart; t.scheduledEnd=manualStart!=null ? manualStart+duration : null; }
       if(t.status==='planned'){ t.scheduledStart=null; t.scheduledEnd=null; }
     } else {
       const newTask = {
-        id: uid(), name, duration, schedulingType: type, manualStart,
+        id: uid(), name, duration, schedulingType: type, kind, memo, manualStart,
         assignedDate: dateVal || null, deadline: deadlineVal || null,
         routineId: null, status: 'planned',
         scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
@@ -1219,6 +1324,11 @@
         notifiedStart: false, notifiedEnd: false
       };
       state.tasks.push(newTask);
+      if(kind==='record'){
+        const rt=state.tasks[state.tasks.length-1]; rt.status='done';
+        if(dateVal && manualStart!=null){ rt.actualStartTs=new Date(dateVal+'T'+minToTimeStr(manualStart)+':00').getTime(); rt.actualEndTs=rt.actualStartTs+duration*60000; rt.scheduledStart=manualStart; rt.scheduledEnd=manualStart+duration; }
+        else { rt.actualStartTs=Date.now(); rt.actualEndTs=rt.actualStartTs+duration*60000; }
+      }
       postToDiscord('📝 [' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
     }
     document.getElementById('taskModal').classList.remove('show');
@@ -1226,6 +1336,13 @@
     render();
     showToast('ほぞんしたよ💾');
   });
+
+  /* ================= record modal shortcut ================= */
+  function openRecordModal(defaultDate){
+    openTaskModal('create', null, {date:defaultDate || state.viewDate, kind:'record'});
+    const kindRadio = document.querySelector('input[name=tmKind][value="record"]'); if(kindRadio) kindRadio.checked=true;
+    document.getElementById('tmStartTime').focus();
+  }
 
   /* ================= routine modal ================= */
   let editingRoutineId = null;
@@ -1265,6 +1382,7 @@
 
   /* ================= task actions ================= */
   async function handleTaskAction(action, id){
+    if(action==='money'){ openMoneyModal(id); return; }
     if(action==='toggleRoutineActive'){
       const r = state.routines.find(x=>x.id===id);
       if(r){
@@ -1427,6 +1545,24 @@
     showToast('ログアウトしたよ');
   });
 
+
+  document.getElementById('moneyCancel').addEventListener('click',()=>document.getElementById('moneyModal').classList.remove('show'));
+  document.getElementById('moneySave').addEventListener('click',async()=>{
+    const t=state.tasks.find(x=>x.id===state.moneyTargetId); const amount=Number(document.getElementById('moneyAmount').value);
+    if(!t || !amount || amount<0){showToast('金額を入力してね');return;}
+    if(!Array.isArray(t.money)) t.money=[];
+    t.money.push({id:uid(),type:document.querySelector('input[name=moneyType]:checked').value,amount,category:document.getElementById('moneyCategory').value.trim()||'その他',date:document.getElementById('moneyDate').value||todayStr()});
+    document.getElementById('moneyModal').classList.remove('show'); await syncData(); render(); showToast('お金の記録を追加したよ💰');
+  });
+  document.getElementById('budgetCancel').addEventListener('click',()=>document.getElementById('budgetModal').classList.remove('show'));
+  document.getElementById('budgetSave').addEventListener('click',async()=>{
+    const amount=Number(document.getElementById('budgetAmount').value); if(!amount || amount<0){showToast('予算額を入力してね');return;}
+    const period=document.querySelector('input[name=budgetPeriod]:checked').value; const r=periodRange(period,state.viewDate);
+    const category=document.getElementById('budgetCategory').value.trim();
+    state.budgets.push({id:uid(),period,start:r.start,end:r.end,category,amount});
+    document.getElementById('budgetModal').classList.remove('show'); await syncData(); render(); showToast('予算を設定したよ🎯');
+  });
+
   /* ================= global click / change delegation ================= */
   document.addEventListener('click', function(e){
     const tab = e.target.closest('.tab-btn');
@@ -1452,6 +1588,12 @@
 
     const openRoutineBtn = e.target.closest('[data-open-routine-modal]');
     if(openRoutineBtn){ openRoutineModal('create'); return; }
+    const openRecordBtn = e.target.closest('[data-open-record-modal]');
+    if(openRecordBtn){ openRecordModal(openRecordBtn.dataset.defaultDate || state.viewDate); return; }
+    const openBudgetBtn = e.target.closest('[data-open-budget]');
+    if(openBudgetBtn){ document.getElementById('budgetAmount').value=''; document.getElementById('budgetCategory').value=''; document.getElementById('budgetModal').classList.add('show'); return; }
+    const delBudgetBtn = e.target.closest('[data-budget-delete]');
+    if(delBudgetBtn){ state.budgets=state.budgets.filter(b=>b.id!==delBudgetBtn.dataset.budgetDelete); syncData(); render(); return; }
 
     const actionBtn = e.target.closest('[data-action]');
     if(actionBtn){ handleTaskAction(actionBtn.dataset.action, actionBtn.dataset.id); return; }
