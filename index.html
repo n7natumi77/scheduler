@@ -355,15 +355,7 @@
   <div class="modal">
     <h2 id="taskModalTitle">✏️ タスクをついか</h2>
     <div class="field"><label>名前</label><input type="text" id="tmName" placeholder="例）レポートを書く / バイト / 映画を見た"></div>
-    <div class="field">
-      <label>これは何？</label>
-      <div class="type-choice">
-        <label><input type="radio" name="tmKind" value="task" checked><span>✅ タスク</span></label>
-        <label><input type="radio" name="tmKind" value="event"><span>📅 予定</span></label>
-        <label><input type="radio" name="tmKind" value="record"><span>📝 記録</span></label>
-      </div>
-      <div class="hint">「記録」は、あとから「この時間は何してた？」を残すためのもの。完了操作はいらないよ。</div>
-    </div>
+    <div class="hint">タスクは「やるべきこと」。具体的な日時を決めたいときは、保存後に「📅 予定を追加」からこのタスクに予定を紐づけられるよ。</div>
     <div class="row2">
       <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="0" step="1" value="30"></div>
       <div class="field"><label>開始時刻（任意）</label><input type="time" id="tmStartTime"></div>
@@ -389,8 +381,31 @@
       </div>
     </div>
     <div class="modal-actions">
+      <button class="btn ghost" id="tmScheduleBtn" style="display:none;">📅 予定を追加</button>
       <button class="btn gray" id="tmCancel">とじる</button>
       <button class="btn" id="tmSave">💾 ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<!-- event modal -->
+<div class="modal-bg" id="eventModal">
+  <div class="modal">
+    <h2 id="eventModalTitle">📅 予定をついか</h2>
+    <div class="field"><label>予定名</label><input type="text" id="emName" placeholder="例）参考文献を調べる"></div>
+    <div class="row2">
+      <div class="field"><label>日付</label><input type="date" id="emDate"></div>
+      <div class="field"><label>開始時刻</label><input type="time" id="emStart"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>終了時刻</label><input type="time" id="emEnd"></div>
+      <div class="field"><label>紐づくタスク（任意）</label><select id="emTask"><option value="">紐づけない</option></select></div>
+    </div>
+    <div class="field"><label>一言メモ（任意）</label><textarea id="emMemo" rows="2" placeholder="実際にしたこと、気づいたことなど"></textarea></div>
+    <div class="hint" id="emTaskHint">タスクに紐づけると、この予定から進捗更新や完了処理ができるよ。</div>
+    <div class="modal-actions">
+      <button class="btn gray" id="emCancel">とじる</button>
+      <button class="btn" id="emSave">💾 予定を保存</button>
     </div>
   </div>
 </div>
@@ -550,21 +565,26 @@
       + '<option value="progress" '+(current==='progress'?'selected':'')+'>達成度のみ</option>'
       + '</select></div>';
   }
-  function filterCalendarTasks(tasks, scope){
+  function filterCalendarTasks(items, scope){
     const f = state.calendarFilters[scope] || 'all';
-    if(f==='event') return tasks.filter(t=>t.kind==='event');
-    if(f==='event_record') return tasks.filter(t=>t.kind==='event' || t.kind==='record');
-    if(f==='task') return tasks.filter(t=>t.kind!=='event' && t.kind!=='record');
-    if(f==='unfinished') return tasks.filter(t=>(t.kind==='event' || (t.kind!=='record')) && t.status!=='done');
+    if(f==='event' || f==='event_record') return items.filter(x=>x.itemType==='event');
+    if(f==='task') return items.filter(x=>x.itemType==='task');
+    if(f==='unfinished') return items.filter(x=>x.itemType==='task' ? x.item.status!=='done' : (x.item.status!=='done' && !(x.item.date < todayStr())));
     if(f==='progress') return [];
-    return tasks;
+    return items;
   }
-  function achievementTasks(tasks){
-    return tasks.filter(t=>t.kind==='event' || (t.kind!=='record'));
+  function dayItems(dateStr){
+    const events=state.events.filter(e=>e.date===dateStr).map(item=>({itemType:'event',item:item}));
+    const linkedTaskIds=new Set(events.map(x=>x.item.taskId).filter(Boolean));
+    const tasks=state.tasks.filter(t=>t.assignedDate===dateStr && !linkedTaskIds.has(t.id)).map(item=>({itemType:'task',item:item}));
+    return tasks.concat(events);
   }
 
+  function achievementTasks(items){ return items.filter(x=>x.itemType==='task').map(x=>x.item); }
+
   const state = {
-    tasks: loadLocalTasks(),
+    tasks: [],
+    events: [],
     routines: loadLocalRoutines(),
     settings: loadLocalSettings(),
     budgets: loadLocalBudgets(),
@@ -573,23 +593,50 @@
     currentUser: null,
     unsubscribeFirestore: null,
     moneyTargetId: null,
+    moneyTargetType: null,
     moneyEditingId: null,
     calendarFilters: loadCalendarFilters()
   };
 
-  state.tasks = state.tasks.map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
+  function normalizeData(tasks, events){
+    const rawTasks = Array.isArray(tasks) ? tasks : [];
+    const rawEvents = Array.isArray(events) ? events : [];
+    const migratedEvents = rawTasks.filter(t=>t && (t.kind==='event' || t.kind==='record')).map(t=>({
+      id:t.id, name:t.name||'', date:t.assignedDate||todayStr(), startMin:t.manualStart!=null?t.manualStart:(t.scheduledStart!=null?t.scheduledStart:null),
+      endMin:t.scheduledEnd!=null?t.scheduledEnd:(t.manualStart!=null?t.manualStart+(t.duration||0):null), memo:t.memo||'', taskId:null, money:Array.isArray(t.money)?t.money:[],
+      status:t.status==='done'?'done':'planned', actualStartTs:t.actualStartTs||null, actualEndTs:t.actualEndTs||null, routineId:t.routineId||null
+    }));
+    const seen=new Set(rawEvents.map(e=>e.id));
+    const evs=rawEvents.map(e=>Object.assign({memo:'',money:[],taskId:null,status:'planned',startMin:null,endMin:null},e));
+    migratedEvents.forEach(e=>{if(!seen.has(e.id)) evs.push(e);});
+    return {
+      tasks:rawTasks.filter(t=>t && t.kind!=='event' && t.kind!=='record').map(t=>Object.assign({kind:'task',memo:'',money:[],progress:t.status==='done'?100:0},t)),
+      events:evs
+    };
+  }
+
+  { const n=normalizeData(loadLocalTasks(),JSON.parse(localStorage.getItem('liflow_events_v1')||'[]')); state.tasks=n.tasks; state.events=n.events; }
+
+  // 旧形式の「日時つきタスク」を、タスク本体と予定に分離する。
+  state.tasks.forEach(t=>{
+    if(t.assignedDate && t.manualStart!=null && !state.events.some(e=>e.taskId===t.id)){
+      state.events.push({id:uid(),name:t.name,date:t.assignedDate,startMin:t.manualStart,endMin:t.scheduledEnd!=null?t.scheduledEnd:t.manualStart+(t.duration||0),memo:t.memo||'',taskId:t.id,status:t.status==='done'?'done':'planned',actualStartTs:t.actualStartTs||null,actualEndTs:t.actualEndTs||null,money:[]});
+      t.assignedDate=null; t.manualStart=null; t.scheduledStart=null; t.scheduledEnd=null;
+    }
+  });
 
   // Firestoreへの保存を直列化して、短時間に複数回変更しても古い内容で上書きしにくくする。
   let saveQueue = Promise.resolve();
   let firestoreReady = false;
 
   function localHasData(){
-    return state.tasks.length > 0 || state.routines.length > 0;
+    return state.tasks.length > 0 || state.events.length > 0 || state.routines.length > 0;
   }
 
   function syncData(){
     // ローカルにも常にキャッシュしておく。
     saveLocalTasks();
+    localStorage.setItem('liflow_events_v1', JSON.stringify(state.events));
     saveLocalRoutines();
     saveLocalSettings();
     saveLocalBudgets();
@@ -602,6 +649,7 @@
     const ref = window.fbMethods.doc(window.fbDb, 'users', uid);
     const payload = JSON.parse(JSON.stringify({
       tasks: state.tasks,
+      events: state.events,
       routines: state.routines,
       settings: state.settings,
       budgets: state.budgets
@@ -649,7 +697,9 @@
             const data = docSnap.data();
 
             // Firestoreを正としてstateへ反映する。ここでは絶対に保存し直さない。
-            state.tasks = (Array.isArray(data.tasks) ? data.tasks : []).map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
+            const normalized = normalizeData(data.tasks, data.events);
+            state.tasks = normalized.tasks;
+            state.events = normalized.events;
             state.routines = (Array.isArray(data.routines) ? data.routines : []).map(r=>Object.assign({excludedDates:[]}, r));
             state.settings = Object.assign(
               {dayStart:'08:00', dayEnd:'22:00', webhook:''},
@@ -679,6 +729,7 @@
             }else{
               // 完全な新規アカウントなら空データを作る。
               state.tasks = [];
+              state.events = [];
               state.routines = [];
               state.settings = loadLocalSettings();
               localStorage.setItem(LS_OWNER, user.uid);
@@ -694,7 +745,9 @@
       }else{
         statusEl.style.display = 'none';
         authLogoutBtn.style.display = 'none';
-        state.tasks = loadLocalTasks().map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
+        const normalized = normalizeData(loadLocalTasks(), JSON.parse(localStorage.getItem('liflow_events_v1')||'[]'));
+        state.tasks = normalized.tasks;
+        state.events = normalized.events;
         state.routines = loadLocalRoutines().map(r=>Object.assign({excludedDates:[]}, r));
         state.settings = loadLocalSettings();
         state.budgets = loadLocalBudgets();
@@ -750,7 +803,7 @@
         state.tasks.push({
           id: uid(), name: r.name, duration: r.duration, schedulingType: r.schedulingType, kind:'task', memo:'', money:[],
           manualStart: r.manualStart || null, assignedDate: dateStr, deadline: null,
-          routineId: r.id, status: 'planned',
+          routineId: r.id, status: 'planned', progress:0,
           scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
           actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
           order: Date.now()+Math.random(), pushedFromDate: null, money:[],
@@ -771,7 +824,7 @@
 
     const dayTasks = state.tasks.filter(t=>t.assignedDate===dateStr);
 
-    const fixedIntervals = [];
+    const fixedIntervals = state.events.filter(e=>e.date===dateStr && e.startMin!=null && e.endMin!=null).map(e=>({start:e.startMin,end:e.endMin}));
     dayTasks.forEach(t=>{
       if(t.schedulingType === 'fixed' || t.manualStart != null){
         const start = t.manualStart != null ? t.manualStart : dayStart;
@@ -925,10 +978,10 @@
     return '<div class="task-card '+(t.status==='active'?'active-card':'')+'">'
       + '<div class="task-top">'
       + '<div class="task-name">'+(t.status==='done'?'💖 ':'')+(t.routineId?'🔁 ':'')+escapeHtml(t.name)+'</div>'
-      + '<span class="badge '+(t.kind==='record'?'fixed':t.kind==='event'?'tomorrow':typeBadgeClass(t.schedulingType))+'">'+(t.kind==='record'?'記録':t.kind==='event'?'予定':typeLabel(t.schedulingType))+'</span>'
+      + '<span class="badge '+typeBadgeClass(t.schedulingType)+'">タスク</span>'
       + '</div>'
       + '<div class="task-meta">'+timeInfo+'</div>'
-      + (t.memo ? '<div class="memo-line">📝 '+escapeHtml(t.memo)+'</div>' : '')
+      + (t.progress!=null && t.progress>0 && t.status!=='done' ? '<div class="task-meta">進捗 '+Number(t.progress)+'%</div>' : '') + (t.memo ? '<div class="memo-line">📝 '+escapeHtml(t.memo)+'</div>' : '')
       + (Array.isArray(t.money) && t.money.length ? '<div class="money-line '+(t.money.some(m=>m.type==='expense')?'expense':'')+'">💰 '+t.money.map(m=>'<span style="display:inline-flex;align-items:center;gap:3px;margin-right:5px;">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円 <button class="money-mini-btn" data-money-edit="'+t.id+'" data-money-entry="'+m.id+'" title="この収支を編集">✏️</button><button class="money-mini-btn" data-money-delete="'+t.id+'" data-money-entry="'+m.id+'" title="この収支を削除">×</button></span>').join('')+'</div>' : '')
       + '<div class="task-actions">'+actionsHtml+timerHtml+'<button class="btn small ghost" data-money-open="'+t.id+'">💰</button></div>'
       + '</div>';
@@ -938,18 +991,19 @@
   function buildTimelineHTML(dateStr, isToday){
     const dayStart = timeStrToMin(state.settings.dayStart);
     const dayEnd = timeStrToMin(state.settings.dayEnd);
-    const scheduled = state.tasks.filter(t=> t.assignedDate===dateStr && t.scheduledStart!=null);
+    const scheduled = state.tasks.filter(t=> t.assignedDate===dateStr && t.scheduledStart!=null).map(t=>({itemType:'task',item:t,start:t.scheduledStart,end:t.scheduledEnd})).concat(state.events.filter(e=>e.date===dateStr && e.startMin!=null && e.endMin!=null).map(e=>({itemType:'event',item:e,start:e.startMin,end:e.endMin})));
     let maxEnd = dayEnd;
-    scheduled.forEach(t=>{ if(t.scheduledEnd>maxEnd) maxEnd=t.scheduledEnd; });
+    scheduled.forEach(x=>{ if(x.end>maxEnd) maxEnd=x.end; });
     const startHour = Math.floor(dayStart/60);
     const endHour = Math.max(startHour+1, Math.ceil(maxEnd/60));
     const height = (endHour-startHour)*60*PX_PER_MIN;
 
     // 重なり判定＆レイアウト計算
-    const items = scheduled.map(t=>{
+    const items = scheduled.map(x=>{
+      const t=x.item;
       // 0分タスク表示用に表示最小高さを確保（最小12分相当）
       const effEnd = Math.max(t.scheduledEnd, t.scheduledStart + (t.duration === 0 ? 12 : Math.max(t.duration, 10)));
-      return { id: t.id, start: t.scheduledStart, end: effEnd, task: t, col: 0, totalCols: 1 };
+      return { id: t.id, start: x.start, end: Math.max(x.end, x.start + (x.itemType==='event'?1:0)), task: t, itemType:x.itemType, col: 0, totalCols: 1 };
     }).sort((a,b)=> a.start - b.start || (b.end - b.start) - (a.end - a.start));
 
     // カラム割り当て
@@ -986,11 +1040,11 @@
 
     items.forEach(item => {
       const t = item.task;
-      const top = (t.scheduledStart - startHour*60) * PX_PER_MIN;
-      const displayDuration = (t.duration === 0) ? 12 : Math.max(t.duration, 10);
+      const top = (item.start - startHour*60) * PX_PER_MIN;
+      const displayDuration = item.itemType==='event' ? Math.max(10, item.end-item.start) : ((t.duration === 0) ? 12 : Math.max(t.duration, 10));
       const h = displayDuration * PX_PER_MIN;
       const stateClass = t.status==='active' ? 'is-active' : t.status==='done' ? 'is-done' : '';
-      const mark = t.kind==='record' ? '📝 ' : t.status==='done' ? '💖 ' : t.status==='paused' ? '⏸ ' : '';
+      const mark = item.itemType==='event' ? '📅 ' : t.status==='done' ? '💖 ' : t.status==='paused' ? '⏸ ' : '';
       
       // 横幅と位置の動的計算（56pxオフセットから右側領域を分ける）
       const leftOffset = 56;
@@ -1001,7 +1055,7 @@
 
       html += '<div class="task-block '+typeBlockClass(t.schedulingType)+' '+stateClass+'" draggable="true" data-id="'+t.id+'" style="top:'+top+'px;height:'+h+'px;left:'+left+';width:'+widthCss+';">'
         + '<b>'+mark+escapeHtml(t.name)+'</b>'
-        + '<span class="tb-time">'+minToTimeStr(t.scheduledStart)+(t.duration>0?'〜'+minToTimeStr(t.scheduledEnd):' (0分)')+'</span></div>';
+        + '<span class="tb-time">'+minToTimeStr(item.start)+'〜'+minToTimeStr(item.end)+'</span></div>';
     });
 
     if(isToday){
@@ -1024,7 +1078,9 @@
 
     const timelineHtml = buildTimelineHTML(dateStr, isToday);
 
-    const allDayTasks = state.tasks.filter(t=> t.assignedDate===dateStr);
+    const allItems = dayItems(dateStr);
+    const allDayTasks = allItems.filter(x=>x.itemType==='task').map(x=>x.item);
+    const allDayEvents = allItems.filter(x=>x.itemType==='event').map(x=>x.item);
     const notDone = allDayTasks.filter(t=> t.status!=='done');
     const done = allDayTasks.filter(t=> t.status==='done');
     
@@ -1056,8 +1112,7 @@
       if(r!==0) return r;
       return (a.scheduledStart==null?9999:a.scheduledStart) - (b.scheduledStart==null?9999:b.scheduledStart);
     });
-    const queueHtml = queueTasks.length ? queueTasks.map(t=>taskCardHTML(t,{showDate:false,allowUnassign:true})).join('')
-      : '<div class="empty">タスクがまだないよ〜💤<br>「＋ついか」から追加してね！</div>';
+    const queueHtml = (queueTasks.map(t=>taskCardHTML(t,{showDate:false,allowUnassign:true})).concat(allDayEvents.map(e=>eventCardHTML(e))).join('')) || '<div class="empty">出来事がまだないよ〜💤<br>「＋ついか」から追加してね！</div>';
 
     const pushedList = state.tasks.filter(t=> t.pushedFromDate===dateStr && t.assignedDate===addDays(dateStr,1) && t.status!=='done');
     const pushedHtml = pushedList.length ? pushedList.map(t=>
@@ -1084,7 +1139,7 @@
       + '<div>'
       + '<div class="card"><div class="washi" style="background:repeating-linear-gradient(45deg, var(--lavender) 0 6px, #F3ECFF 6px 12px);"></div>'
       + '<h2>📊 達成チェックリスト（表）</h2>' + tableHtml
-      + '<h2>📝 出来事 <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn small ghost" data-open-record-modal="1" data-default-date="'+dateStr+'">＋記録</button><button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'">＋ついか</button></span></h2>'
+      + '<h2>📝 出来事 <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn small ghost" data-open-event-modal="1" data-default-date="'+dateStr+'">＋予定</button><button class="btn small" data-open-task-modal="1" data-default-date="'+dateStr+'">＋タスク</button></span></h2>'
       + queueHtml + '</div>'
       + '</div>'
       + '</div>';
@@ -1102,18 +1157,22 @@
       const dObj = strToDate(d);
       const wd = dObj.getDay();
       const isToday = d===todayS;
-      const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
-      const achievement = achievementTasks(dayTasks);
+      const items = dayItems(d);
+      const dayTasks = items.filter(x=>x.itemType==='task').map(x=>x.item);
+      const achievement = achievementTasks(items);
       const doneCount = achievement.filter(t=>t.status==='done').length;
       totalWeekTasks += achievement.length;
       totalWeekDone += doneCount;
-      const visibleTasks = filterCalendarTasks(dayTasks, 'week');
+      const visibleItems = filterCalendarTasks(items, 'week');
       const progressOnly = state.calendarFilters.week==='progress';
 
-      const chips = progressOnly ? '' : (visibleTasks.sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0)).map(t=>
-        '<div class="wk-chip '+typeBlockClass(t.schedulingType)+'" data-goto-date="'+d+'">'
-        + (t.kind==='record'?'📝 ':t.status==='done'?'💖 ':minToTimeStr(t.scheduledStart)+' ')+escapeHtml(t.name)+'</div>').join('')
-        || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>');
+      const chips = progressOnly ? '' : (visibleItems.slice().sort((a,b)=>((a.itemType==='event'?a.item.startMin:a.item.scheduledStart)||0)-((b.itemType==='event'?b.item.startMin:b.item.scheduledStart)||0)).map(x=>{
+        const t=x.item;
+        const time=x.itemType==='event'?t.startMin:t.scheduledStart;
+        const cls=x.itemType==='event'?'type-fixed':typeBlockClass(t.schedulingType);
+        const icon=x.itemType==='event'?'📅 ':t.status==='done'?'💖 ':'✓ ';
+        return '<div class="wk-chip '+cls+'" data-goto-date="'+d+'">'+icon+(time!=null?minToTimeStr(time)+' ':'')+escapeHtml(t.name)+'</div>';
+      }).join('') || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>');
 
       return '<div class="week-col '+(isToday?'today':'')+'">'
         + '<div class="week-col-head '+(wd===0?'sun':wd===6?'sat':'')+'" data-goto-date="'+d+'">'+(dObj.getMonth()+1)+'/'+dObj.getDate()+'('+WD[wd]+')</div>'
@@ -1152,25 +1211,27 @@
       const dObj = strToDate(d);
       const other = dObj.getMonth()!==monthIdx;
       const isToday = d===todayS;
-      const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
-      const achievement = achievementTasks(dayTasks);
+      const items = dayItems(d);
+      const dayTasks = items.filter(x=>x.itemType==='task').map(x=>x.item);
+      const achievement = achievementTasks(items);
       const doneCount = achievement.filter(t=>t.status==='done').length;
       if(!other){ totalMonthTasks += achievement.length; totalMonthDone += doneCount; }
-      const visibleTasks = filterCalendarTasks(dayTasks, 'month');
+      const visibleItems = filterCalendarTasks(items, 'month');
       const hasDeadline = state.tasks.some(t=> t.deadline===d && t.status!=='done');
       const itemLimit = 5;
-      const monthItems = progressOnly ? '' : visibleTasks
+      const monthItems = progressOnly ? '' : visibleItems
         .slice()
-        .sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0))
+        .sort((a,b)=>((a.itemType==='event'?a.item.startMin:a.item.scheduledStart)||0)-((b.itemType==='event'?b.item.startMin:b.item.scheduledStart)||0))
         .slice(0,itemLimit)
-        .map(t=>{
-          const cls = t.kind==='event' ? 'event' : t.kind==='record' ? 'record' : 'task';
-          const icon = t.kind==='event' ? '📅' : t.kind==='record' ? '📝' : '✓';
-          const time = t.scheduledStart!=null ? minToTimeStr(t.scheduledStart)+' ' : '';
+        .map(x=>{
+          const t=x.item;
+          const cls = x.itemType==='event' ? 'event' : 'task';
+          const icon = x.itemType==='event' ? '📅' : '✓';
+          const time = (x.itemType==='event'?t.startMin:t.scheduledStart)!=null ? minToTimeStr(x.itemType==='event'?t.startMin:t.scheduledStart)+' ' : '';
           return '<div class="month-item '+cls+' '+(t.status==='done'?'done':'')+'" title="'+escapeHtml((time?time:'')+t.name)+'">'
             + icon+' '+escapeHtml(time+t.name)+'</div>';
         }).join('');
-      const moreCount = Math.max(0, visibleTasks.length-itemLimit);
+      const moreCount = Math.max(0, visibleItems.length-itemLimit);
       return '<div class="month-cell '+(other?'other-month':'')+' '+(isToday?'today':'')+'" data-goto-date="'+d+'">'
         + '<div class="month-date"><span>'+dObj.getDate()+(hasDeadline?' 🔖':'')+'</span>'
         + (achievement.length > 0 ? '<span class="month-heart-count">'+doneCount+'/'+achievement.length+'💖</span>' : '')
@@ -1193,7 +1254,7 @@
 
     function renderTodoView(){
     const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done' && !t.routineId);
-    const scheduled = state.tasks.filter(t=> t.assignedDate!==null && t.status!=='done');
+    const scheduled = state.tasks.filter(t=> (t.assignedDate!==null || state.events.some(e=>e.taskId===t.id)) && t.status!=='done');
     const done = state.tasks.filter(t=> t.status==='done').sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
 
     function col(title, list, opts){
@@ -1217,7 +1278,7 @@
     return {start:startOfWeek(dateToStr(d)), end:addDays(startOfWeek(dateToStr(d)),6)};
   }
   function allMoney(){
-    return state.tasks.flatMap(t=>(Array.isArray(t.money)?t.money:[]).map(m=>Object.assign({},m,{taskId:t.id,taskName:t.name}))).filter(m=>m.amount!=null);
+    return state.tasks.flatMap(t=>(Array.isArray(t.money)?t.money:[]).map(m=>Object.assign({},m,{ownerType:'task',ownerId:t.id,taskId:t.id,taskName:t.name}))).concat(state.events.flatMap(e=>(Array.isArray(e.money)?e.money:[]).map(m=>Object.assign({},m,{ownerType:'event',ownerId:e.id,taskId:e.id,taskName:e.name})))).filter(m=>m.amount!=null);
   }
   function moneyForRange(range){
     return allMoney().filter(m=>{const d=m.date || todayStr(); return d>=range.start && d<=range.end;});
@@ -1235,39 +1296,40 @@
       return '<div class="money-summary"><div style="display:flex;justify-content:space-between;gap:8px;"><b>🎯 '+(b.period==='week'?'今週':'今月')+(b.category?'・'+escapeHtml(b.category):'・全体')+'</b><button class="btn small gray" data-budget-delete="'+b.id+'">🗑</button></div><div class="money-row"><span>使用</span><b>'+ex.toLocaleString()+' / '+Number(b.amount).toLocaleString()+'円</b></div><div class="budget-bar"><div class="budget-fill '+(over?'over':'')+'" style="width:'+pct+'%"></div></div><div class="hint">'+(over?'予算オーバー💦':'残り '+Math.max(0,b.amount-ex).toLocaleString()+'円')+'</div></div>';
     }
     const tx=allMoney().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-    const txHtml=tx.slice(0,30).map(m=>'<div class="money-row"><span>'+escapeHtml(m.date||'')+'・'+escapeHtml(m.taskName||'')+'<br><small>'+escapeHtml(m.category||'その他')+'</small></span><span style="display:flex;align-items:center;gap:6px;"><b style="color:'+(m.type==='expense'?'#C86A6A':'#6B8E5A')+'">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円</b><button class="money-mini-btn" data-money-edit="'+m.taskId+'" data-money-entry="'+m.id+'">✏️</button><button class="money-mini-btn" data-money-delete="'+m.taskId+'" data-money-entry="'+m.id+'">×</button></span></div>').join('') || '<div class="empty">まだ収支がないよ。出来事の💰から追加できるよ。</div>';
+    const txHtml=tx.slice(0,30).map(m=>'<div class="money-row"><span>'+escapeHtml(m.date||'')+'・'+escapeHtml(m.taskName||'')+'<br><small>'+escapeHtml(m.category||'その他')+'</small></span><span style="display:flex;align-items:center;gap:6px;"><b style="color:'+(m.type==='expense'?'#C86A6A':'#6B8E5A')+'">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円</b><button class="money-mini-btn" data-money-edit="'+m.taskId+'" data-money-owner="'+(m.ownerType||'task')+'" data-money-entry="'+m.id+'">✏️</button><button class="money-mini-btn" data-money-delete="'+m.taskId+'" data-money-owner="'+(m.ownerType||'task')+'" data-money-entry="'+m.id+'">×</button></span></div>').join('') || '<div class="empty">まだ収支がないよ。出来事の💰から追加できるよ。</div>';
     return '<div class="day-nav"><div class="date-label">💰 お金</div><button class="btn small" data-open-budget="1" style="margin-left:auto;">🎯 予算を設定</button></div>'
       + '<div class="finance-grid"><div class="money-summary"><h2 style="margin-top:0">📅 今月</h2><div class="money-big">'+(monthIncome-monthExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+monthIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+monthExpense.toLocaleString()+'円</b></div></div>'
       + '<div class="money-summary"><h2 style="margin-top:0">🗓 今週</h2><div class="money-big">'+(weekIncome-weekExpense).toLocaleString()+'円</div><div class="money-row"><span>収入</span><b style="color:#6B8E5A">+'+weekIncome.toLocaleString()+'円</b></div><div class="money-row"><span>支出</span><b style="color:#C86A6A">-'+weekExpense.toLocaleString()+'円</b></div></div></div>'
       + '<div class="card"><div class="washi"></div><h2>🎯 予算</h2><div class="finance-grid">'+(budgets.map(budgetCard).join('')||'<div class="empty">まだ予算がないよ。週・月ごとに設定できるよ。</div>')+'</div></div>'
       + '<div class="card"><div class="washi"></div><h2>💳 最近の収支</h2>'+txHtml+'</div>';
   }
-  function openMoneyModal(id, moneyId){
-    const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  function openMoneyModal(id, moneyId, ownerType){
+    const targetType=ownerType||'task';
+    const t=targetType==='event'?state.events.find(x=>x.id===id):state.tasks.find(x=>x.id===id); if(!t)return;
     if(!Array.isArray(t.money)) t.money=[];
     const entry = moneyId ? t.money.find(m=>m.id===moneyId) : null;
-    state.moneyTargetId=id;
+    state.moneyTargetId=id; state.moneyTargetType=targetType;
     state.moneyEditingId=entry ? entry.id : null;
     document.querySelector('#moneyModal h2').textContent = entry ? '💰 お金の記録を編集' : '💰 お金を記録';
     document.getElementById('moneyTargetHint').textContent='「'+t.name+'」に紐づけて記録します。'+(entry?'内容を修正できます。':'必要なときだけ追加してね。');
     document.getElementById('moneyAmount').value=entry ? entry.amount : '';
     document.getElementById('moneyCategory').value=entry ? (entry.category||'') : '';
-    document.getElementById('moneyDate').value=entry ? (entry.date||t.assignedDate||todayStr()) : (t.assignedDate||todayStr());
+    document.getElementById('moneyDate').value=entry ? (entry.date||t.assignedDate||t.date||todayStr()) : (t.assignedDate||t.date||todayStr());
     const radio=document.querySelector('input[name=moneyType][value="'+(entry ? entry.type : 'expense')+'"]'); if(radio) radio.checked=true;
     document.getElementById('moneySave').textContent=entry ? '💾 変更を保存' : '💾 記録';
     document.getElementById('moneyModal').classList.add('show');
   }
   function closeMoneyModal(){
     document.getElementById('moneyModal').classList.remove('show');
-    state.moneyTargetId=null; state.moneyEditingId=null;
+    state.moneyTargetId=null; state.moneyTargetType=null; state.moneyEditingId=null;
   }
   function moneyLabel(m){ return (m.type==='expense'?'支出':'収入')+' '+Number(m.amount||0).toLocaleString()+'円'; }
   async function notifyMoneyChange(action, t, m){
     const sign=m.type==='expense'?'-':'+';
     await postToDiscord('💰 ['+t.name+'] のお金を'+action+'：'+sign+Number(m.amount||0).toLocaleString()+'円（'+(m.category||'その他')+'、'+(m.date||todayStr())+'）');
   }
-  async function deleteMoneyEntry(taskId, moneyId){
-    const t=state.tasks.find(x=>x.id===taskId); if(!t || !Array.isArray(t.money)) return;
+  async function deleteMoneyEntry(taskId, moneyId, ownerType){
+    const t=ownerType==='event'?state.events.find(x=>x.id===taskId):state.tasks.find(x=>x.id===taskId); if(!t || !Array.isArray(t.money)) return;
     const idx=t.money.findIndex(m=>m.id===moneyId); if(idx<0)return;
     const m=t.money[idx];
     if(!confirm('この'+(m.type==='expense'?'支出':'収入')+'を削除する？')) return;
@@ -1374,80 +1436,74 @@ function renderRoutineView(){
     });
   }
 
+  /* ================= event helpers ================= */
+  function eventCardHTML(e){
+    const linked = e.taskId ? state.tasks.find(t=>t.id===e.taskId) : null;
+    const time = e.startMin!=null ? minToTimeStr(e.startMin)+'〜'+(e.endMin!=null?minToTimeStr(e.endMin):'') : '時間未定';
+    let linkedHtml = linked ? '<div class="task-meta">🔗 '+escapeHtml(linked.name)+' ・ 進捗 '+Number(linked.progress||0)+'%</div>' : '';
+    let actions = '';
+    if(linked){
+      actions += '<button class="btn small ghost" data-event-task-progress="'+e.id+'">進捗を更新</button><button class="btn small" data-event-task-done="'+e.id+'">💖完了</button>';
+    }
+    actions += '<button class="btn small ghost" data-event-edit="'+e.id+'">✏️</button><button class="btn small gray" data-event-delete="'+e.id+'">🗑</button><button class="btn small ghost" data-money-open-type="event" data-money-open="'+e.id+'">💰</button>';
+    return '<div class="task-card"><div class="task-top"><div class="task-name">📅 '+escapeHtml(e.name)+'</div><span class="badge fixed">予定</span></div><div class="task-meta">🕒 '+time+(e.date?' ・ 📅'+formatDateJP(e.date):'')+'</div>'+linkedHtml+(e.memo?'<div class="memo-line">📝 '+escapeHtml(e.memo)+'</div>':'')+(Array.isArray(e.money)&&e.money.length?'<div class="money-line">💰 '+e.money.map(m=>'<span style="display:inline-flex;align-items:center;gap:3px;margin-right:5px;">'+(m.type==='expense'?'-':'+')+Number(m.amount||0).toLocaleString()+'円 <button class="money-mini-btn" data-money-edit="'+e.id+'" data-money-owner="event" data-money-entry="'+m.id+'">✏️</button><button class="money-mini-btn" data-money-delete="'+e.id+'" data-money-owner="event" data-money-entry="'+m.id+'">×</button></span>').join('')+'</div>':'')+'<div class="task-actions">'+actions+'</div></div>';
+  }
+
+  let editingEventId=null;
+  function openEventModal(mode,event,defaults){
+    editingEventId=mode==='edit'&&event?event.id:null;
+    document.getElementById('eventModalTitle').textContent=editingEventId?'📅 予定をへんしゅう':'📅 予定をついか';
+    document.getElementById('emName').value=event?event.name:(defaults&&defaults.name)||'';
+    document.getElementById('emDate').value=event?event.date:(defaults&&defaults.date)||state.viewDate||todayStr();
+    document.getElementById('emStart').value=event&&event.startMin!=null?minToTimeStr(event.startMin):(defaults&&defaults.startMin!=null?minToTimeStr(defaults.startMin):'');
+    document.getElementById('emEnd').value=event&&event.endMin!=null?minToTimeStr(event.endMin):(defaults&&defaults.endMin!=null?minToTimeStr(defaults.endMin):'');
+    document.getElementById('emMemo').value=event?(event.memo||''):(defaults&&defaults.memo)||'';
+    const sel=document.getElementById('emTask');
+    sel.innerHTML='<option value="">紐づけない</option>'+state.tasks.filter(t=>t.status!=='done').map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
+    if(defaults&&defaults.taskId) sel.value=defaults.taskId; else if(event&&event.taskId) sel.value=event.taskId;
+    document.getElementById('eventModal').classList.add('show');
+  }
+  function closeEventModal(){document.getElementById('eventModal').classList.remove('show');editingEventId=null;}
+  document.getElementById('emCancel').addEventListener('click',closeEventModal);
+  document.getElementById('eventModal').addEventListener('click',e=>{if(e.target.id==='eventModal')closeEventModal();});
+  document.getElementById('emSave').addEventListener('click',async()=>{
+    const name=document.getElementById('emName').value.trim(), date=document.getElementById('emDate').value, start=document.getElementById('emStart').value, end=document.getElementById('emEnd').value, memo=document.getElementById('emMemo').value.trim(), taskId=document.getElementById('emTask').value||null;
+    const startMin=timeStrToMin(start), endMin=timeStrToMin(end);
+    if(!name||!date||startMin==null||endMin==null||endMin<=startMin){showToast('予定名・日付・開始/終了時刻を正しく入力してね');return;}
+    if(editingEventId){const e=state.events.find(x=>x.id===editingEventId); if(!e)return; Object.assign(e,{name,date,startMin,endMin,memo,taskId});}
+    else state.events.push({id:uid(),name,date,startMin,endMin,memo,taskId,status:'planned',actualStartTs:null,actualEndTs:null,money:[]});
+    closeEventModal(); await syncData(); render(); showToast('予定を保存したよ💾');
+  });
+
   /* ================= task modal ================= */
   let editingTaskId = null;
   function openTaskModal(mode, task, defaults){
-    editingTaskId = mode==='edit' ? task.id : null;
-    const initialKind = task ? (task.kind || 'task') : ((defaults && defaults.kind) || 'task');
-    document.getElementById('taskModalTitle').textContent = mode==='edit' ? (initialKind==='record' ? '📝 記録をへんしゅう' : initialKind==='event' ? '📅 予定をへんしゅう' : '✏️ タスクをへんしゅう') : (initialKind==='record' ? '📝 記録を追加' : initialKind==='event' ? '📅 予定を追加' : '✏️ タスクを追加');
+    editingTaskId = mode==='edit' && task ? task.id : null;
+    document.getElementById('taskModalTitle').textContent = editingTaskId ? '✏️ タスクをへんしゅう' : '✏️ タスクをついか';
     document.getElementById('tmName').value = task ? task.name : '';
-    const kind = initialKind;
-    const kindRadio = document.querySelector('input[name=tmKind][value="'+kind+'"]'); if(kindRadio) kindRadio.checked = true;
     document.getElementById('tmMemo').value = task ? (task.memo || '') : '';
     document.getElementById('tmDuration').value = task ? task.duration : 30;
-    const type = task ? task.schedulingType : ((defaults && defaults.type) || 'flexible');
+    const type = task ? task.schedulingType : 'flexible';
     document.querySelector('input[name=tmType][value="'+type+'"]').checked = true;
-    
-    document.getElementById('tmStartTime').value = (task && task.manualStart != null) ? minToTimeStr(task.manualStart) : '';
-    document.getElementById('tmDate').value = task ? (task.assignedDate || '') : ((defaults && defaults.date) || '');
-    document.getElementById('tmDeadline').value = (task && task.deadline) ? task.deadline : '';
+    document.getElementById('tmStartTime').value = '';
+    document.getElementById('tmDate').value = task ? '' : ((defaults && defaults.date) || '');
+    document.getElementById('tmDeadline').value = task ? (task.deadline || '') : '';
+    const sb=document.getElementById('tmScheduleBtn'); sb.style.display=editingTaskId?'inline-block':'none';
+    if(editingTaskId) sb.onclick=()=>{ document.getElementById('taskModal').classList.remove('show'); openEventModal('create',null,{date:state.viewDate||todayStr(),name:task.name,taskId:task.id}); };
     document.getElementById('taskModal').classList.add('show');
   }
   document.getElementById('tmCancel').addEventListener('click', ()=> document.getElementById('taskModal').classList.remove('show'));
   document.getElementById('taskModal').addEventListener('click', (e)=>{ if(e.target.id==='taskModal') e.currentTarget.classList.remove('show'); });
   document.getElementById('tmSave').addEventListener('click', async ()=>{
-    const name = document.getElementById('tmName').value.trim();
-    const durationInput = document.getElementById('tmDuration').value;
-    const duration = parseInt(durationInput, 10);
-    const type = document.querySelector('input[name=tmType]:checked').value;
-    const kind = document.querySelector('input[name=tmKind]:checked').value;
-    const memo = document.getElementById('tmMemo').value.trim();
-    const dateVal = document.getElementById('tmDate').value;
-    const deadlineVal = document.getElementById('tmDeadline').value;
-    const startVal = document.getElementById('tmStartTime').value;
-    if(!name || isNaN(duration) || duration < 0){ showToast('タスク名と正しい時間を入力してね'); return; }
-    
-    const manualStart = startVal ? timeStrToMin(startVal) : null;
-
-    if(editingTaskId){
-      const t = state.tasks.find(x=>x.id===editingTaskId);
-      t.name=name; t.duration=duration; t.schedulingType=type; t.kind=kind; t.memo=memo; 
-      t.manualStart = manualStart;
-      t.assignedDate = dateVal || null; t.deadline = deadlineVal || null;
-      if(kind==='record'){ t.status='done'; t.actualStartTs = manualStart!=null ? new Date(dateVal+'T'+minToTimeStr(manualStart)+':00').getTime() : Date.now(); t.actualEndTs = t.actualStartTs + duration*60000; t.scheduledStart=manualStart; t.scheduledEnd=manualStart!=null ? manualStart+duration : null; }
-      if(t.status==='planned'){ t.scheduledStart=null; t.scheduledEnd=null; }
-    } else {
-      const newTask = {
-        id: uid(), name, duration, schedulingType: type, kind, memo, manualStart,
-        assignedDate: dateVal || null, deadline: deadlineVal || null,
-        routineId: null, status: 'planned',
-        scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
-        actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
-        order: Date.now()+Math.random(), pushedFromDate: null,
-        notifiedStart: false, notifiedEnd: false
-      };
-      state.tasks.push(newTask);
-      if(kind==='record'){
-        const rt=state.tasks[state.tasks.length-1]; rt.status='done';
-        if(dateVal && manualStart!=null){ rt.actualStartTs=new Date(dateVal+'T'+minToTimeStr(manualStart)+':00').getTime(); rt.actualEndTs=rt.actualStartTs+duration*60000; rt.scheduledStart=manualStart; rt.scheduledEnd=manualStart+duration; }
-        else { rt.actualStartTs=Date.now(); rt.actualEndTs=rt.actualStartTs+duration*60000; }
-      }
-      if(kind !== 'record'){
-        postToDiscord((kind==='event'?'📅 ':'📝 ') + '[' + name + '] を追加したよ！（' + (dateVal || '日付未定') + ' ' + (startVal || '') + '）');
-      }
-    }
-    document.getElementById('taskModal').classList.remove('show');
-    await syncData();
-    render();
-    showToast('ほぞんしたよ💾');
+    const name=document.getElementById('tmName').value.trim(), duration=parseInt(document.getElementById('tmDuration').value,10), type=document.querySelector('input[name=tmType]:checked').value, memo=document.getElementById('tmMemo').value.trim(), deadline=document.getElementById('tmDeadline').value;
+    if(!name||isNaN(duration)||duration<0){showToast('タスク名と正しい時間を入力してね');return;}
+    if(editingTaskId){const t=state.tasks.find(x=>x.id===editingTaskId); if(!t)return; Object.assign(t,{name,duration,schedulingType:type,memo,deadline:deadline||null});}
+    else state.tasks.push({id:uid(),name,duration,schedulingType:type,kind:'task',memo,money:[],assignedDate:null,deadline:deadline||null,routineId:null,status:'planned',progress:0,scheduledStart:null,scheduledEnd:null,plannedStart:null,plannedEnd:null,actualStartTs:null,actualEndTs:null,pausedAt:null,totalPausedMs:0,order:Date.now()+Math.random(),pushedFromDate:null,notifiedStart:false,notifiedEnd:false});
+    document.getElementById('taskModal').classList.remove('show'); await syncData(); render(); showToast('タスクを保存したよ💾');
   });
 
-  /* ================= record modal shortcut ================= */
-  function openRecordModal(defaultDate){
-    openTaskModal('create', null, {date:defaultDate || state.viewDate, kind:'record'});
-    const kindRadio = document.querySelector('input[name=tmKind][value="record"]'); if(kindRadio) kindRadio.checked=true;
-    document.getElementById('tmStartTime').focus();
-  }
+  /* ================= past event shortcut ================= */
+  function openRecordModal(defaultDate){ openEventModal('create',null,{date:defaultDate||state.viewDate}); }
 
   /* ================= routine modal ================= */
   let editingRoutineId = null;
@@ -1484,6 +1540,14 @@ function renderRoutineView(){
     render();
     showToast('ルーティンをほぞんしたよ💾');
   });
+
+  /* ================= event actions ================= */
+  async function handleEventAction(action,id){
+    const e=state.events.find(x=>x.id===id); if(!e)return;
+    if(action==='edit'){openEventModal('edit',e);return;}
+    if(action==='delete'){if(!confirm('この予定を削除する？'))return; state.events=state.events.filter(x=>x.id!==id); await syncData(); render(); return;}
+    if(action==='progress' || action==='done'){const t=state.tasks.find(x=>x.id===e.taskId); if(!t)return; if(action==='done'){t.status='done'; t.actualEndTs=t.actualEndTs||Date.now(); t.progress=100; e.status='done'; e.actualEndTs=e.actualEndTs||Date.now();} else {const v=prompt('タスクの進捗度（0〜100）',String(Number(t.progress||0))); if(v===null)return; const n=Math.max(0,Math.min(100,Number(v))); if(!Number.isFinite(n))return; t.progress=n; if(n>=100){t.progress=100;t.status='done';e.status='done';} else {e.status='planned';}} await syncData(); render();}
+  }
 
   /* ================= task actions ================= */
   async function handleTaskAction(action, id){
@@ -1530,6 +1594,7 @@ function renderRoutineView(){
           }
         }
         state.tasks = state.tasks.filter(x=>x.id!==id);
+        state.events = state.events.filter(e=>e.taskId!==id);
         break;
 
       case 'start':
@@ -1573,6 +1638,7 @@ function renderRoutineView(){
       case 'done':
         {
           t.status='done';
+          t.progress=100;
           t.actualEndTs=Date.now();
           if(t.plannedStart==null){
             t.plannedStart=t.scheduledStart;
@@ -1591,6 +1657,7 @@ function renderRoutineView(){
 
       case 'reopen':
         t.status='planned';
+        t.progress=Math.min(99, Number(t.progress||100));
         t.actualStartTs=null;
         t.actualEndTs=null;
         t.pausedAt=null;
@@ -1671,7 +1738,7 @@ function renderRoutineView(){
   document.getElementById('moneyCancel').addEventListener('click',closeMoneyModal);
   document.getElementById('moneyModal').addEventListener('click',(e)=>{if(e.target.id==='moneyModal') closeMoneyModal();});
   document.getElementById('moneySave').addEventListener('click',async()=>{
-    const t=state.tasks.find(x=>x.id===state.moneyTargetId); const amount=Number(document.getElementById('moneyAmount').value);
+    const t=state.moneyTargetType==='event'?state.events.find(x=>x.id===state.moneyTargetId):state.tasks.find(x=>x.id===state.moneyTargetId); const amount=Number(document.getElementById('moneyAmount').value);
     if(!t || !amount || amount<0){showToast('金額を入力してね');return;}
     if(!Array.isArray(t.money)) t.money=[];
     const type=document.querySelector('input[name=moneyType]:checked').value;
@@ -1737,15 +1804,22 @@ function renderRoutineView(){
     if(openRoutineBtn){ openRoutineModal('create'); return; }
     const openRecordBtn = e.target.closest('[data-open-record-modal]');
     if(openRecordBtn){ openRecordModal(openRecordBtn.dataset.defaultDate || state.viewDate); return; }
+    const openEventBtn=e.target.closest('[data-open-event-modal]');
+    if(openEventBtn){openEventModal('create',null,{date:openEventBtn.dataset.defaultDate||state.viewDate});return;}
+    const eventEdit=e.target.closest('[data-event-edit]'); if(eventEdit){e.stopPropagation();openEventModal('edit',state.events.find(x=>x.id===eventEdit.dataset.eventEdit));return;}
+    const eventDelete=e.target.closest('[data-event-delete]'); if(eventDelete){e.stopPropagation();handleEventAction('delete',eventDelete.dataset.eventDelete);return;}
+    const eventProgress=e.target.closest('[data-event-task-progress]'); if(eventProgress){e.stopPropagation();handleEventAction('progress',eventProgress.dataset.eventTaskProgress);return;}
+    const eventDone=e.target.closest('[data-event-task-done]'); if(eventDone){e.stopPropagation();handleEventAction('done',eventDone.dataset.eventTaskDone);return;}
+    const eventMoney=e.target.closest('[data-money-open-type]'); if(eventMoney){e.stopPropagation();openMoneyModal(eventMoney.dataset.moneyOpen,'', 'event');return;}
     const openBudgetBtn = e.target.closest('[data-open-budget]');
     if(openBudgetBtn){ document.getElementById('budgetAmount').value=''; document.getElementById('budgetCategory').value=''; document.getElementById('budgetModal').classList.add('show'); return; }
     const delBudgetBtn = e.target.closest('[data-budget-delete]');
     if(delBudgetBtn){ state.budgets=state.budgets.filter(b=>b.id!==delBudgetBtn.dataset.budgetDelete); syncData(); render(); return; }
 
     const moneyEditBtn = e.target.closest('[data-money-edit]');
-    if(moneyEditBtn){ e.stopPropagation(); openMoneyModal(moneyEditBtn.dataset.moneyEdit, moneyEditBtn.dataset.moneyEntry); return; }
+    if(moneyEditBtn){ e.stopPropagation(); openMoneyModal(moneyEditBtn.dataset.moneyEdit, moneyEditBtn.dataset.moneyEntry, moneyEditBtn.dataset.moneyOwner||'task'); return; }
     const moneyDeleteBtn = e.target.closest('[data-money-delete]');
-    if(moneyDeleteBtn){ e.stopPropagation(); deleteMoneyEntry(moneyDeleteBtn.dataset.moneyDelete, moneyDeleteBtn.dataset.moneyEntry); return; }
+    if(moneyDeleteBtn){ e.stopPropagation(); deleteMoneyEntry(moneyDeleteBtn.dataset.moneyDelete, moneyDeleteBtn.dataset.moneyEntry, moneyDeleteBtn.dataset.moneyOwner||'task'); return; }
     const moneyOpenBtn = e.target.closest('[data-money-open]');
     if(moneyOpenBtn){ e.stopPropagation(); openMoneyModal(moneyOpenBtn.dataset.moneyOpen); return; }
     const actionBtn = e.target.closest('[data-action]');
