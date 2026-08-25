@@ -222,6 +222,11 @@
   @media (max-width:880px){.todo-cols{grid-template-columns:1fr;}}
   .todo-col h3{font-family:'Yomogi',cursive; font-size:15px; color:var(--pink-dark); margin:0 0 10px;}
 
+  .calendar-filter-wrap{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin:0 0 10px;flex-wrap:wrap;}
+  .calendar-filter-label{font-size:11px;font-weight:800;color:var(--text-soft);}
+  .calendar-filter{border:2px solid var(--pink);background:#fff;border-radius:12px;padding:6px 10px;font-family:inherit;font-size:11px;font-weight:700;color:var(--text);outline:none;cursor:pointer;box-shadow:2px 2px 0 rgba(232,85,142,.18);}
+  .calendar-filter:focus{border-color:var(--pink-dark);}
+
   /* ---------- week view ---------- */
   .week-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
   @media (max-width:820px){.week-grid{grid-template-columns:1fr 1fr; }}
@@ -241,11 +246,14 @@
   .month-cell.other-month{opacity:.35;}
   .month-cell.today{border-color:#FF3E82; box-shadow:0 0 0 2px rgba(255,62,130,.15);}
   .month-date{font-size:11px; font-weight:800; display:flex; justify-content:space-between; align-items:center;}
-  .month-dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:4px;}
-  .dot{width:7px;height:7px;border-radius:50%;}
-  .dot.fixed{background:var(--lavender-deep);}
-  .dot.flexible{background:var(--pink-dark);}
-  .dot.flow{background:var(--yellow-deep);}
+  .month-items{display:flex; flex-direction:column; gap:2px; margin-top:4px;}
+  .month-item{font-size:9.5px; line-height:1.25; border-radius:5px; padding:2px 4px; border:1px solid rgba(0,0,0,.07); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .month-item.event{background:#EEF8F0; border-color:#B8DDBD;}
+  .month-item.task{background:#FFF5BA; border-color:#E9C94A;}
+  .month-item.record{background:#F3ECFF; border-color:#D2B9F2;}
+  .month-item.done{opacity:.62; text-decoration:line-through;}
+  .month-more{font-size:9px; color:var(--text-soft); text-align:center; padding-top:1px;}
+  .month-cell{min-height:118px;}
   .month-heart-count{ font-size:10px; color:var(--pink-dark); font-weight:bold; }
 
   /* ---------- modal ---------- */
@@ -508,6 +516,53 @@
   function loadLocalBudgets(){ try{ return JSON.parse(localStorage.getItem(LS_BUDGETS)) || []; }catch(e){ return []; } }
   function saveLocalBudgets(){ localStorage.setItem(LS_BUDGETS, JSON.stringify(state.budgets)); }
 
+  /* ================= calendar display filters ================= */
+  const CALENDAR_FILTER_KEY = 'liflow_calendar_filters_v1';
+  function loadCalendarFilters(){
+    try{
+      const raw = localStorage.getItem(CALENDAR_FILTER_KEY);
+      const v = raw ? JSON.parse(raw) : {};
+      const valid = ['all','event','event_record','task','unfinished','progress'];
+      return {
+        week: valid.includes(v.week) ? v.week : 'all',
+        month: valid.includes(v.month) ? v.month : 'all'
+      };
+    }catch(e){
+      return {week:'all', month:'all'};
+    }
+  }
+  function saveCalendarFilters(){
+    try{ localStorage.setItem(CALENDAR_FILTER_KEY, JSON.stringify(state.calendarFilters)); }catch(e){}
+  }
+  function calendarFilterLabel(v){
+    return ({all:'すべて',event:'予定のみ',event_record:'予定＋記録',task:'タスクのみ',unfinished:'未消化のみ',progress:'達成度のみ'})[v] || 'すべて';
+  }
+  function calendarFilterControl(scope){
+    const current = state.calendarFilters[scope] || 'all';
+    return '<div class="calendar-filter-wrap">'
+      + '<span class="calendar-filter-label">表示：</span>'
+      + '<select class="calendar-filter" data-calendar-filter="'+scope+'" aria-label="'+scope+'カレンダーの表示">'
+      + '<option value="all" '+(current==='all'?'selected':'')+'>すべての項目</option>'
+      + '<option value="event" '+(current==='event'?'selected':'')+'>予定として追加したもの</option>'
+      + '<option value="event_record" '+(current==='event_record'?'selected':'')+'>予定＋記録</option>'
+      + '<option value="task" '+(current==='task'?'selected':'')+'>タスクとして追加したもの</option>'
+      + '<option value="unfinished" '+(current==='unfinished'?'selected':'')+'>未消化のタスク・予定</option>'
+      + '<option value="progress" '+(current==='progress'?'selected':'')+'>達成度のみ</option>'
+      + '</select></div>';
+  }
+  function filterCalendarTasks(tasks, scope){
+    const f = state.calendarFilters[scope] || 'all';
+    if(f==='event') return tasks.filter(t=>t.kind==='event');
+    if(f==='event_record') return tasks.filter(t=>t.kind==='event' || t.kind==='record');
+    if(f==='task') return tasks.filter(t=>t.kind!=='event' && t.kind!=='record');
+    if(f==='unfinished') return tasks.filter(t=>(t.kind==='event' || (t.kind!=='record')) && t.status!=='done');
+    if(f==='progress') return [];
+    return tasks;
+  }
+  function achievementTasks(tasks){
+    return tasks.filter(t=>t.kind==='event' || (t.kind!=='record'));
+  }
+
   const state = {
     tasks: loadLocalTasks(),
     routines: loadLocalRoutines(),
@@ -518,7 +573,8 @@
     currentUser: null,
     unsubscribeFirestore: null,
     moneyTargetId: null,
-    moneyEditingId: null
+    moneyEditingId: null,
+    calendarFilters: loadCalendarFilters()
   };
 
   state.tasks = state.tasks.map(t=>Object.assign({kind:'task',memo:'',money:[]},t));
@@ -1039,7 +1095,6 @@
     const dates = [0,1,2,3,4,5,6].map(i=>addDays(start,i));
     dates.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
     const todayS = todayStr();
-    
     let totalWeekTasks = 0;
     let totalWeekDone = 0;
 
@@ -1048,19 +1103,21 @@
       const wd = dObj.getDay();
       const isToday = d===todayS;
       const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
-      const doneCount = dayTasks.filter(t=> t.status==='done').length;
-      
-      totalWeekTasks += dayTasks.length;
+      const achievement = achievementTasks(dayTasks);
+      const doneCount = achievement.filter(t=>t.status==='done').length;
+      totalWeekTasks += achievement.length;
       totalWeekDone += doneCount;
+      const visibleTasks = filterCalendarTasks(dayTasks, 'week');
+      const progressOnly = state.calendarFilters.week==='progress';
 
-      const chips = dayTasks.sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0)).map(t=>
+      const chips = progressOnly ? '' : (visibleTasks.sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0)).map(t=>
         '<div class="wk-chip '+typeBlockClass(t.schedulingType)+'" data-goto-date="'+d+'">'
-        + (t.status==='done'?'💖 ':minToTimeStr(t.scheduledStart)+' ')+escapeHtml(t.name)+'</div>').join('')
-        || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>';
+        + (t.kind==='record'?'📝 ':t.status==='done'?'💖 ':minToTimeStr(t.scheduledStart)+' ')+escapeHtml(t.name)+'</div>').join('')
+        || '<div class="empty" style="padding:4px;font-size:11px;">なし</div>');
 
       return '<div class="week-col '+(isToday?'today':'')+'">'
         + '<div class="week-col-head '+(wd===0?'sun':wd===6?'sat':'')+'" data-goto-date="'+d+'">'+(dObj.getMonth()+1)+'/'+dObj.getDate()+'('+WD[wd]+')</div>'
-        + '<div class="wk-stats">'+(dayTasks.length > 0 ? doneCount+'/'+dayTasks.length+' 💖' : '-')+'</div>'
+        + '<div class="wk-stats">'+(achievement.length > 0 ? doneCount+'/'+achievement.length+' 💖' : '-')+'</div>'
         + chips + '</div>';
     }).join('');
 
@@ -1070,7 +1127,9 @@
       + '<button class="icon-btn nav-arrow" data-shift-days="7">▶</button>'
       + '<button class="btn small ghost" data-this-week="1">今週</button>'
       + '</div>'
-      + '<div class="card"><div class="washi"></div><h2>🗓 週の予定と達成状況（今週の達成度: '+totalWeekDone+' / '+totalWeekTasks+' 💖）</h2><div class="week-grid">'+cols+'</div></div>';
+      + '<div class="card"><div class="washi"></div><h2>🗓 週の予定と達成状況（今週の達成度: '+totalWeekDone+' / '+totalWeekTasks+' 💖）</h2>'
+      + calendarFilterControl('week')
+      + '<div class="week-grid">'+cols+'</div></div>';
   }
 
   function renderMonthView(){
@@ -1084,9 +1143,9 @@
     cells.forEach(d=>{ ensureRoutineInstances(d); recalcScheduleForDate(d); });
     const monthIdx = base.getMonth();
     const todayS = todayStr();
-    
     let totalMonthTasks = 0;
     let totalMonthDone = 0;
+    const progressOnly = state.calendarFilters.month==='progress';
 
     const weekdayRow = WD.map((w,i)=> '<div style="'+(i===0?'color:#FF6F91':i===6?'color:#4FA8D8':'')+'">'+w+'</div>').join('');
     const cellsHtml = cells.map(d=>{
@@ -1094,21 +1153,30 @@
       const other = dObj.getMonth()!==monthIdx;
       const isToday = d===todayS;
       const dayTasks = state.tasks.filter(t=> t.assignedDate===d);
-      const doneCount = dayTasks.filter(t=> t.status==='done').length;
-
-      if(!other){
-        totalMonthTasks += dayTasks.length;
-        totalMonthDone += doneCount;
-      }
-
-      const dots = dayTasks.slice(0,6).map(t=>'<span class="dot '+(t.status==='done'?'fixed':t.schedulingType)+'"></span>').join('');
+      const achievement = achievementTasks(dayTasks);
+      const doneCount = achievement.filter(t=>t.status==='done').length;
+      if(!other){ totalMonthTasks += achievement.length; totalMonthDone += doneCount; }
+      const visibleTasks = filterCalendarTasks(dayTasks, 'month');
       const hasDeadline = state.tasks.some(t=> t.deadline===d && t.status!=='done');
-      
+      const itemLimit = 5;
+      const monthItems = progressOnly ? '' : visibleTasks
+        .slice()
+        .sort((a,b)=>(a.scheduledStart||0)-(b.scheduledStart||0))
+        .slice(0,itemLimit)
+        .map(t=>{
+          const cls = t.kind==='event' ? 'event' : t.kind==='record' ? 'record' : 'task';
+          const icon = t.kind==='event' ? '📅' : t.kind==='record' ? '📝' : '✓';
+          const time = t.scheduledStart!=null ? minToTimeStr(t.scheduledStart)+' ' : '';
+          return '<div class="month-item '+cls+' '+(t.status==='done'?'done':'')+'" title="'+escapeHtml((time?time:'')+t.name)+'">'
+            + icon+' '+escapeHtml(time+t.name)+'</div>';
+        }).join('');
+      const moreCount = Math.max(0, visibleTasks.length-itemLimit);
       return '<div class="month-cell '+(other?'other-month':'')+' '+(isToday?'today':'')+'" data-goto-date="'+d+'">'
         + '<div class="month-date"><span>'+dObj.getDate()+(hasDeadline?' 🔖':'')+'</span>'
-        + (dayTasks.length > 0 ? '<span class="month-heart-count">'+doneCount+'💖</span>' : '')
+        + (achievement.length > 0 ? '<span class="month-heart-count">'+doneCount+'/'+achievement.length+'💖</span>' : '')
         + '</div>'
-        + '<div class="month-dots">'+dots+'</div></div>';
+        + (progressOnly ? '' : '<div class="month-items">'+monthItems+(moreCount>0?'<div class="month-more">＋'+moreCount+'件</div>':'')+'</div>')
+        + '</div>';
     }).join('');
 
     return '<div class="day-nav">'
@@ -1118,11 +1186,12 @@
       + '<button class="btn small ghost" data-this-month="1">今月</button>'
       + '</div>'
       + '<div class="card"><div class="washi"></div><h2>🗓 月の予定と達成状況（月達成度: '+totalMonthDone+' / '+totalMonthTasks+' 💖）</h2>'
+      + calendarFilterControl('month')
       + '<div class="month-weekday-row">'+weekdayRow+'</div>'
       + '<div class="month-grid">'+cellsHtml+'</div></div>';
   }
 
-  function renderTodoView(){
+    function renderTodoView(){
     const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done' && !t.routineId);
     const scheduled = state.tasks.filter(t=> t.assignedDate!==null && t.status!=='done');
     const done = state.tasks.filter(t=> t.status==='done').sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
@@ -1630,6 +1699,18 @@ function renderRoutineView(){
   });
 
   /* ================= global click / change delegation ================= */
+  document.addEventListener('change', function(e){
+    const filter = e.target.closest('.calendar-filter');
+    if(filter){
+      const scope = filter.dataset.calendarFilter;
+      if(scope && state.calendarFilters[scope] !== undefined){
+        state.calendarFilters[scope] = filter.value;
+        saveCalendarFilters();
+        render();
+      }
+    }
+  });
+
   document.addEventListener('click', function(e){
     const tab = e.target.closest('.tab-btn');
     if(tab){ state.currentView = tab.dataset.view; render(); return; }
