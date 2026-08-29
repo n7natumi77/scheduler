@@ -241,7 +241,7 @@
   /* ---------- month view ---------- */
   .month-weekday-row{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; font-size:11px; font-weight:800; text-align:center; color:var(--text-soft);}
   .month-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
-  .month-cell{background:#fff; border:2px solid var(--pink); border-radius:12px; min-height:66px; padding:5px; cursor:pointer; transition:.1s;}
+  .month-cell{background:#fff; border:2px solid var(--pink); border-radius:12px; min-height:118px; padding:5px; cursor:pointer; transition:.1s;}
   .month-cell:hover{transform:translateY(-1px);}
   .month-cell.other-month{opacity:.35;}
   .month-cell.today{border-color:#FF3E82; box-shadow:0 0 0 2px rgba(255,62,130,.15);}
@@ -253,7 +253,6 @@
   .month-item.record{background:#F3ECFF; border-color:#D2B9F2;}
   .month-item.done{opacity:.62; text-decoration:line-through;}
   .month-more{font-size:9px; color:var(--text-soft); text-align:center; padding-top:1px;}
-  .month-cell{min-height:118px;}
   .month-heart-count{ font-size:10px; color:var(--pink-dark); font-weight:bold; }
 
   /* ---------- modal ---------- */
@@ -275,6 +274,11 @@
   ::-webkit-scrollbar{width:10px;}
   ::-webkit-scrollbar-thumb{background:var(--pink); border-radius:10px;}
   ::-webkit-scrollbar-track{background:#fff6fb;}
+
+/* Routine achievement bar (used inside ルーティン管理 cards) */
+.routine-bar{height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-top:6px}
+.routine-bar>span{display:block;height:100%;background:currentColor;border-radius:99px}
+
 </style>
 </head>
 <body>
@@ -338,6 +342,14 @@
       <div class="field"><label>1日のおわり</label><input type="time" id="setDayEnd"></div>
     </div>
     <div class="field">
+      <label>共有カレンダー</label>
+      <div class="hint">予定を作るたびに選ばなくてもいいように、種類ごとの初期値を決めておけるよ。予定ごとの変更もできます。</div>
+      <div class="row2" style="margin-top:8px;">
+        <label style="font-size:12px;"><input type="checkbox" id="setDefaultShareStandalone"> 普通の予定は共有する</label>
+        <label style="font-size:12px;"><input type="checkbox" id="setDefaultShareTask"> タスクから作る予定も共有する</label>
+      </div>
+    </div>
+    <div class="field">
       <label>Discord Webhook URL</label>
       <input type="url" id="setWebhook" placeholder="https://discord.com/api/webhooks/...">
       <div class="hint">タスク追加・開始・完了時や時刻になった際に通知を送信します。</div>
@@ -355,7 +367,7 @@
   <div class="modal">
     <h2 id="taskModalTitle">✏️ タスクをついか</h2>
     <div class="field"><label>名前</label><input type="text" id="tmName" placeholder="例）レポートを書く / バイト / 映画を見た"></div>
-    <div class="hint">タスクは「やるべきこと」。具体的な日時を決めたいときは、保存後に「📅 予定を追加」からこのタスクに予定を紐づけられるよ。</div>
+    <div class="hint">タスクは「やるべきこと」。下の「追加する日」でその日の空き時間に自動でならべられるよ。カレンダーに固定の日時で出したいときは、保存後に「📅 予定を追加」からこのタスクに予定を紐づけてね。</div>
     <div class="row2">
       <div class="field"><label>所要時間（分）</label><input type="number" id="tmDuration" min="0" step="1" value="30"></div>
       <div class="field"><label>開始時刻（任意）</label><input type="time" id="tmStartTime"></div>
@@ -402,6 +414,10 @@
       <div class="field"><label>紐づくタスク（任意）</label><select id="emTask"><option value="">紐づけない</option></select></div>
     </div>
     <div class="field"><label>一言メモ（任意）</label><textarea id="emMemo" rows="2" placeholder="実際にしたこと、気づいたことなど"></textarea></div>
+    <div class="field" style="margin-top:4px;">
+      <label style="font-size:12px;"><input type="checkbox" id="emShared"> 📤 共有カレンダーに追加</label>
+      <div class="hint">TimeTreeなどの共有用カレンダーへ出したい予定だけONにできるよ。</div>
+    </div>
     <div class="hint" id="emTaskHint">タスクに紐づけると、この予定から進捗更新や完了処理ができるよ。</div>
     <div class="modal-actions">
       <button class="btn gray" id="emCancel">とじる</button>
@@ -523,9 +539,9 @@
   function loadLocalSettings(){
     try{
       const s = JSON.parse(localStorage.getItem(LS_SETTINGS));
-      if(s) return Object.assign({dayStart:'08:00', dayEnd:'22:00', webhook:''}, s);
+      if(s) return Object.assign({dayStart:'08:00', dayEnd:'22:00', webhook:'', defaultShareStandalone:true, defaultShareTask:false}, s);
     }catch(e){}
-    return {dayStart:'08:00', dayEnd:'22:00', webhook:''};
+    return {dayStart:'08:00', dayEnd:'22:00', webhook:'', defaultShareStandalone:true, defaultShareTask:false};
   }
   function saveLocalSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); }
   function loadLocalBudgets(){ try{ return JSON.parse(localStorage.getItem(LS_BUDGETS)) || []; }catch(e){ return []; } }
@@ -548,9 +564,6 @@
   }
   function saveCalendarFilters(){
     try{ localStorage.setItem(CALENDAR_FILTER_KEY, JSON.stringify(state.calendarFilters)); }catch(e){}
-  }
-  function calendarFilterLabel(v){
-    return ({all:'すべて',event:'予定のみ',event_record:'予定＋記録',task:'タスクのみ',unfinished:'未消化のみ',progress:'達成度のみ'})[v] || 'すべて';
   }
   function calendarFilterControl(scope){
     const current = state.calendarFilters[scope] || 'all';
@@ -603,11 +616,11 @@
     const rawEvents = Array.isArray(events) ? events : [];
     const migratedEvents = rawTasks.filter(t=>t && (t.kind==='event' || t.kind==='record')).map(t=>({
       id:t.id, name:t.name||'', date:t.assignedDate||todayStr(), startMin:t.manualStart!=null?t.manualStart:(t.scheduledStart!=null?t.scheduledStart:null),
-      endMin:t.scheduledEnd!=null?t.scheduledEnd:(t.manualStart!=null?t.manualStart+(t.duration||0):null), memo:t.memo||'', taskId:null, money:Array.isArray(t.money)?t.money:[],
+      endMin:t.scheduledEnd!=null?t.scheduledEnd:(t.manualStart!=null?t.manualStart+(t.duration||0):null), memo:t.memo||'', taskId:null, money:Array.isArray(t.money)?t.money:[], shared:false,
       status:t.status==='done'?'done':'planned', actualStartTs:t.actualStartTs||null, actualEndTs:t.actualEndTs||null, routineId:t.routineId||null
     }));
     const seen=new Set(rawEvents.map(e=>e.id));
-    const evs=rawEvents.map(e=>Object.assign({memo:'',money:[],taskId:null,status:'planned',startMin:null,endMin:null},e));
+    const evs=rawEvents.map(e=>Object.assign({memo:'',money:[],taskId:null,status:'planned',startMin:null,endMin:null,shared:false},e));
     migratedEvents.forEach(e=>{if(!seen.has(e.id)) evs.push(e);});
     return {
       tasks:rawTasks.filter(t=>t && t.kind!=='event' && t.kind!=='record').map(t=>Object.assign({kind:'task',memo:'',money:[],progress:t.status==='done'?100:0},t)),
@@ -806,10 +819,9 @@
           routineId: r.id, status: 'planned', progress:0,
           scheduledStart: null, scheduledEnd: null, plannedStart: null, plannedEnd: null,
           actualStartTs: null, actualEndTs: null, pausedAt: null, totalPausedMs: 0,
-          order: Date.now()+Math.random(), pushedFromDate: null, money:[],
+          order: Date.now()+Math.random(), pushedFromDate: null,
           notifiedStart: false, notifiedEnd: false
         });
-        created=true;
       }
     });
     return changed;
@@ -1255,7 +1267,7 @@
     function renderTodoView(){
     const backlog = state.tasks.filter(t=> t.assignedDate===null && t.status!=='done' && !t.routineId);
     const scheduled = state.tasks.filter(t=> (t.assignedDate!==null || state.events.some(e=>e.taskId===t.id)) && t.status!=='done');
-    const done = state.tasks.filter(t=> t.status==='done').sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
+    const done = state.tasks.filter(t=> t.status==='done' && !t.routineId).sort((a,b)=> (b.actualEndTs||0)-(a.actualEndTs||0));
 
     function col(title, list, opts){
       if(list.length===0) return '<div class="todo-col"><h3>'+title+'</h3><div class="empty">なにもないよ</div></div>';
@@ -1323,7 +1335,6 @@
     document.getElementById('moneyModal').classList.remove('show');
     state.moneyTargetId=null; state.moneyTargetType=null; state.moneyEditingId=null;
   }
-  function moneyLabel(m){ return (m.type==='expense'?'支出':'収入')+' '+Number(m.amount||0).toLocaleString()+'円'; }
   async function notifyMoneyChange(action, t, m){
     const sign=m.type==='expense'?'-':'+';
     await postToDiscord('💰 ['+t.name+'] のお金を'+action+'：'+sign+Number(m.amount||0).toLocaleString()+'円（'+(m.category||'その他')+'、'+(m.date||todayStr())+'）');
@@ -1342,19 +1353,23 @@
 function renderRoutineView(){
     const list = state.routines;
     const html = list.length===0 ? '<div class="empty">まだルーティンがないよ🔁<br>毎日くりかえすタスクをついかしてみよう！</div>'
-      : list.map(r=>
-        '<div class="task-card"><div class="task-top">'
+      : list.map(r=>{
+        const s = getRoutineStats(r);
+        return '<div class="task-card"><div class="task-top">'
         + '<div class="task-name">'+escapeHtml(r.name)+'</div>'
         + '<span class="badge '+typeBadgeClass(r.schedulingType)+'">'+typeLabel(r.schedulingType)+'</span>'
         + '</div><div class="task-meta">⌛'+r.duration+'分'+(r.manualStart!=null?('・⏰'+minToTimeStr(r.manualStart)):'')+'</div>'
+        + (s.total>0 ? ('<div class="task-meta">📊 達成 '+s.completed+' / '+s.total+' 回（'+s.rate+'%）</div>'
+          + '<div class="routine-bar" style="color:var(--pink-dark);"><span style="width:'+Math.min(100,s.rate)+'%"></span></div>') : '')
         + '<div class="task-actions">'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;"><input type="checkbox" data-action="toggleRoutineActive" data-id="'+r.id+'" '+(r.active?'checked':'')+'> 有効</label>'
         + '<button class="btn small ghost" data-action="editRoutine" data-id="'+r.id+'">✏️編集</button>'
         + '<button class="btn small gray" data-action="deleteRoutine" data-id="'+r.id+'">🗑削除</button>'
-        + '</div></div>').join('');
+        + '</div></div>';
+      }).join('');
     return '<div class="card"><div class="washi"></div>'
       + '<h2>🔁 ルーティン管理 <button class="btn small" data-open-routine-modal="1" style="margin-left:auto;">＋ついか</button></h2>'
-      + '<div class="hint" style="margin-bottom:10px;">ここで登録したタスクは毎日じどうで予定に追加されるよ📅</div>'
+      + '<div class="hint" style="margin-bottom:10px;">ここで登録したタスクは毎日じどうで予定に追加されるよ📅・達成度は今までの記録から計算しているよ📊</div>'
       + html + '</div>';
   }
 
@@ -1458,6 +1473,13 @@ function renderRoutineView(){
     document.getElementById('emStart').value=event&&event.startMin!=null?minToTimeStr(event.startMin):(defaults&&defaults.startMin!=null?minToTimeStr(defaults.startMin):'');
     document.getElementById('emEnd').value=event&&event.endMin!=null?minToTimeStr(event.endMin):(defaults&&defaults.endMin!=null?minToTimeStr(defaults.endMin):'');
     document.getElementById('emMemo').value=event?(event.memo||''):(defaults&&defaults.memo)||'';
+    const sharedEl=document.getElementById('emShared');
+    if(event){
+      sharedEl.checked = event.shared === true;
+    } else {
+      const linkedTask = defaults&&defaults.taskId;
+      sharedEl.checked = linkedTask ? state.settings.defaultShareTask === true : state.settings.defaultShareStandalone !== false;
+    }
     const sel=document.getElementById('emTask');
     sel.innerHTML='<option value="">紐づけない</option>'+state.tasks.filter(t=>t.status!=='done').map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
     if(defaults&&defaults.taskId) sel.value=defaults.taskId; else if(event&&event.taskId) sel.value=event.taskId;
@@ -1467,11 +1489,11 @@ function renderRoutineView(){
   document.getElementById('emCancel').addEventListener('click',closeEventModal);
   document.getElementById('eventModal').addEventListener('click',e=>{if(e.target.id==='eventModal')closeEventModal();});
   document.getElementById('emSave').addEventListener('click',async()=>{
-    const name=document.getElementById('emName').value.trim(), date=document.getElementById('emDate').value, start=document.getElementById('emStart').value, end=document.getElementById('emEnd').value, memo=document.getElementById('emMemo').value.trim(), taskId=document.getElementById('emTask').value||null;
+    const name=document.getElementById('emName').value.trim(), date=document.getElementById('emDate').value, start=document.getElementById('emStart').value, end=document.getElementById('emEnd').value, memo=document.getElementById('emMemo').value.trim(), taskId=document.getElementById('emTask').value||null, shared=document.getElementById('emShared').checked;
     const startMin=timeStrToMin(start), endMin=timeStrToMin(end);
     if(!name||!date||startMin==null||endMin==null||endMin<=startMin){showToast('予定名・日付・開始/終了時刻を正しく入力してね');return;}
-    if(editingEventId){const e=state.events.find(x=>x.id===editingEventId); if(!e)return; Object.assign(e,{name,date,startMin,endMin,memo,taskId});}
-    else state.events.push({id:uid(),name,date,startMin,endMin,memo,taskId,status:'planned',actualStartTs:null,actualEndTs:null,money:[]});
+    if(editingEventId){const e=state.events.find(x=>x.id===editingEventId); if(!e)return; Object.assign(e,{name,date,startMin,endMin,memo,taskId,shared});}
+    else state.events.push({id:uid(),name,date,startMin,endMin,memo,taskId,status:'planned',actualStartTs:null,actualEndTs:null,money:[],shared:false});
     closeEventModal(); await syncData(); render(); showToast('予定を保存したよ💾');
   });
 
@@ -1485,8 +1507,8 @@ function renderRoutineView(){
     document.getElementById('tmDuration').value = task ? task.duration : 30;
     const type = task ? task.schedulingType : 'flexible';
     document.querySelector('input[name=tmType][value="'+type+'"]').checked = true;
-    document.getElementById('tmStartTime').value = '';
-    document.getElementById('tmDate').value = task ? '' : ((defaults && defaults.date) || '');
+    document.getElementById('tmStartTime').value = (task && task.manualStart!=null) ? minToTimeStr(task.manualStart) : '';
+    document.getElementById('tmDate').value = task ? (task.assignedDate || '') : ((defaults && defaults.date) || '');
     document.getElementById('tmDeadline').value = task ? (task.deadline || '') : '';
     const sb=document.getElementById('tmScheduleBtn'); sb.style.display=editingTaskId?'inline-block':'none';
     if(editingTaskId) sb.onclick=()=>{ document.getElementById('taskModal').classList.remove('show'); openEventModal('create',null,{date:state.viewDate||todayStr(),name:task.name,taskId:task.id}); };
@@ -1496,14 +1518,18 @@ function renderRoutineView(){
   document.getElementById('taskModal').addEventListener('click', (e)=>{ if(e.target.id==='taskModal') e.currentTarget.classList.remove('show'); });
   document.getElementById('tmSave').addEventListener('click', async ()=>{
     const name=document.getElementById('tmName').value.trim(), duration=parseInt(document.getElementById('tmDuration').value,10), type=document.querySelector('input[name=tmType]:checked').value, memo=document.getElementById('tmMemo').value.trim(), deadline=document.getElementById('tmDeadline').value;
+    const dateVal=document.getElementById('tmDate').value, startVal=document.getElementById('tmStartTime').value;
     if(!name||isNaN(duration)||duration<0){showToast('タスク名と正しい時間を入力してね');return;}
-    if(editingTaskId){const t=state.tasks.find(x=>x.id===editingTaskId); if(!t)return; Object.assign(t,{name,duration,schedulingType:type,memo,deadline:deadline||null});}
-    else state.tasks.push({id:uid(),name,duration,schedulingType:type,kind:'task',memo,money:[],assignedDate:null,deadline:deadline||null,routineId:null,status:'planned',progress:0,scheduledStart:null,scheduledEnd:null,plannedStart:null,plannedEnd:null,actualStartTs:null,actualEndTs:null,pausedAt:null,totalPausedMs:0,order:Date.now()+Math.random(),pushedFromDate:null,notifiedStart:false,notifiedEnd:false});
+    const manualStart = startVal ? timeStrToMin(startVal) : null;
+    const assignedDate = dateVal || null;
+    if(editingTaskId){
+      const t=state.tasks.find(x=>x.id===editingTaskId); if(!t)return;
+      Object.assign(t,{name,duration,schedulingType:type,memo,deadline:deadline||null,assignedDate,manualStart});
+      if(t.status==='planned'){ t.scheduledStart=null; t.scheduledEnd=null; }
+    }
+    else state.tasks.push({id:uid(),name,duration,schedulingType:type,kind:'task',memo,money:[],assignedDate,manualStart,deadline:deadline||null,routineId:null,status:'planned',progress:0,scheduledStart:null,scheduledEnd:null,plannedStart:null,plannedEnd:null,actualStartTs:null,actualEndTs:null,pausedAt:null,totalPausedMs:0,order:Date.now()+Math.random(),pushedFromDate:null,notifiedStart:false,notifiedEnd:false});
     document.getElementById('taskModal').classList.remove('show'); await syncData(); render(); showToast('タスクを保存したよ💾');
   });
-
-  /* ================= past event shortcut ================= */
-  function openRecordModal(defaultDate){ openEventModal('create',null,{date:defaultDate||state.viewDate}); }
 
   /* ================= routine modal ================= */
   let editingRoutineId = null;
@@ -1549,7 +1575,21 @@ function renderRoutineView(){
     if(action==='progress' || action==='done'){const t=state.tasks.find(x=>x.id===e.taskId); if(!t)return; if(action==='done'){t.status='done'; t.actualEndTs=t.actualEndTs||Date.now(); t.progress=100; e.status='done'; e.actualEndTs=e.actualEndTs||Date.now();} else {const v=prompt('タスクの進捗度（0〜100）',String(Number(t.progress||0))); if(v===null)return; const n=Math.max(0,Math.min(100,Number(v))); if(!Number.isFinite(n))return; t.progress=n; if(n>=100){t.progress=100;t.status='done';e.status='done';} else {e.status='planned';}} await syncData(); render();}
   }
 
-  /* ================= task actions ================= */
+  
+/* ================= routine-only management helpers ================= */
+function isRoutineTask(t){
+  return !!(t && (t.routineId || t.sourceRoutineId || t.generatedFromRoutine));
+}
+function getRoutineStats(routine){
+  const taskDays = (state.tasks || []).filter(t =>
+    isRoutineTask(t) && t.routineId === routine.id
+  );
+  const completed = taskDays.filter(t => t.status === 'done' || t.completed === true).length;
+  const total = taskDays.length;
+  const rate = total ? Math.round(completed / total * 100) : 0;
+  return {completed, total, rate};
+}
+/* ================= task actions ================= */
   async function handleTaskAction(action, id){
     if(action==='money'){ openMoneyModal(id); return; }
     if(action==='toggleRoutineActive'){
@@ -1802,8 +1842,6 @@ function renderRoutineView(){
 
     const openRoutineBtn = e.target.closest('[data-open-routine-modal]');
     if(openRoutineBtn){ openRoutineModal('create'); return; }
-    const openRecordBtn = e.target.closest('[data-open-record-modal]');
-    if(openRecordBtn){ openRecordModal(openRecordBtn.dataset.defaultDate || state.viewDate); return; }
     const openEventBtn=e.target.closest('[data-open-event-modal]');
     if(openEventBtn){openEventModal('create',null,{date:openEventBtn.dataset.defaultDate||state.viewDate});return;}
     const eventEdit=e.target.closest('[data-event-edit]'); if(eventEdit){e.stopPropagation();openEventModal('edit',state.events.find(x=>x.id===eventEdit.dataset.eventEdit));return;}
@@ -1836,6 +1874,8 @@ function renderRoutineView(){
     document.getElementById('setDayStart').value = state.settings.dayStart;
     document.getElementById('setDayEnd').value = state.settings.dayEnd;
     document.getElementById('setWebhook').value = state.settings.webhook;
+    document.getElementById('setDefaultShareStandalone').checked = state.settings.defaultShareStandalone !== false;
+    document.getElementById('setDefaultShareTask').checked = state.settings.defaultShareTask === true;
     settingsModal.classList.add('show');
   }
   document.getElementById('openSettings').addEventListener('click', openSettingsModal);
@@ -1845,6 +1885,8 @@ function renderRoutineView(){
     state.settings.dayStart = document.getElementById('setDayStart').value || '08:00';
     state.settings.dayEnd = document.getElementById('setDayEnd').value || '22:00';
     state.settings.webhook = document.getElementById('setWebhook').value.trim();
+    state.settings.defaultShareStandalone = document.getElementById('setDefaultShareStandalone').checked;
+    state.settings.defaultShareTask = document.getElementById('setDefaultShareTask').checked;
     settingsModal.classList.remove('show');
     await syncData();
     render();
